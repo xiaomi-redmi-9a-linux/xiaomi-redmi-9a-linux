@@ -3,11 +3,11 @@
 
 dbus-update-activation-environment DISPLAY XDG_CURRENT_DESKTOP
 
-# Set default volume to 20% once sound daemon starts
+# Set default volume to 70% once sound daemon starts
 (
 	for i in $(seq 1 10); do
 		if pactl info >/dev/null 2>&1; then
-			pactl set-sink-volume @DEFAULT_SINK@ 20%
+			pactl set-sink-volume @DEFAULT_SINK@ 70%
 			break
 		fi
 		sleep 0.5
