@@ -1,0 +1,5 @@
+# Clean up non-functional MediaTek dummy and baseband DSP nodes
+SUBSYSTEM=="sound", KERNEL=="pcmC1D[2-9]*", RUN+="/bin/rm -f /dev/snd/%k"
+SUBSYSTEM=="sound", KERNEL=="pcmC1D1[0-9]*", RUN+="/bin/rm -f /dev/snd/%k"
+SUBSYSTEM=="sound", KERNEL=="pcmC1D2[0-9]*", RUN+="/bin/rm -f /dev/snd/%k"
+SUBSYSTEM=="sound", KERNEL=="pcmC1D3[0-9]*", RUN+="/bin/rm -f /dev/snd/%k"

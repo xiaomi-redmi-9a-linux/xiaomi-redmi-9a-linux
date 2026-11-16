@@ -1,0 +1,2 @@
+#!/bin/sh
+rm -f /dev/snd/pcmC1D[2-9]* /dev/snd/pcmC1D1[0-9]* /dev/snd/pcmC1D2[0-9]* /dev/snd/pcmC1D3[0-9]*

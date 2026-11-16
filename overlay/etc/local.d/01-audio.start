@@ -1,0 +1,5 @@
+#!/bin/sh
+amixer -c 1 cset numid=1 1
+amixer -c 1 cset numid=2 1
+amixer -c 1 cset numid=4 1
+amixer -c 1 cset numid=12 1
