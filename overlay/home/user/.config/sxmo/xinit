@@ -1,0 +1,18 @@
+#!/bin/sh
+# configversion: 36730424afa6d6bf9e9fb6d111c35504
+
+dbus-update-activation-environment DISPLAY XDG_CURRENT_DESKTOP
+
+# Set default volume to 50% once sound daemon starts
+(
+	for i in $(seq 1 10); do
+		if pactl info >/dev/null 2>&1; then
+			pactl set-sink-volume @DEFAULT_SINK@ 50%
+			break
+		fi
+		sleep 0.5
+	done
+) &
+
+# Run actions on start
+sxmo_hook_start.sh &
