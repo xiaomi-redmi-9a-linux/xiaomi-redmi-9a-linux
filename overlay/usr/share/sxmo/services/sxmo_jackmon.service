@@ -1,0 +1,8 @@
+[Unit]
+Description=Sxmo: detect audio jack plug and auto-switch route
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/sxmo_jackmon
+RestartSec=1s

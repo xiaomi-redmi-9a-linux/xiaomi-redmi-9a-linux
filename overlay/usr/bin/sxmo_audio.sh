@@ -3,7 +3,13 @@
 # Copyright 2022 Sxmo Contributors
 
 # shellcheck source=configs/default_hooks/sxmo_hook_icons.sh
-. sxmo_hook_icons.sh
+if [ -f "$HOME/.config/sxmo/hooks/sxmo_hook_icons.sh" ]; then
+	. "$HOME/.config/sxmo/hooks/sxmo_hook_icons.sh"
+elif [ -f "/usr/share/sxmo/default_hooks/sxmo_hook_icons.sh" ]; then
+	. "/usr/share/sxmo/default_hooks/sxmo_hook_icons.sh"
+elif command -v sxmo_hook_icons.sh >/dev/null 2>&1; then
+	. sxmo_hook_icons.sh
+fi
 . sxmo_common.sh
 
 set -e
@@ -79,6 +85,66 @@ volget() {
 
 volset() {
 	pactl set-sink-volume @DEFAULT_SINK@ "$1"%
+}
+
+# Hardware Audio Routing (Speaker / Headphones / Both)
+route() {
+	target="$1"
+	case "$target" in
+		headphones|hp)
+			amixer -c 1 cset numid=4 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=12 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=5 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=1 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=2 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=1 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=2 1 >/dev/null 2>&1
+			notify-send -r 998 "$icon_hdp Audio Output" "Switched to Headphones" 2>/dev/null || true
+			;;
+		speaker|spk)
+			amixer -c 1 cset numid=1 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=2 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=5 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=4 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=12 1 >/dev/null 2>&1
+			notify-send -r 998 "$icon_spk Audio Output" "Switched to Built-in Speaker" 2>/dev/null || true
+			;;
+		both)
+			amixer -c 1 cset numid=4 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=12 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=5 1 >/dev/null 2>&1
+			notify-send -r 998 "$icon_spk Audio Output" "Switched to Both (Speaker + Headphones)" 2>/dev/null || true
+			;;
+		get)
+			spk="$(amixer -c 1 cget numid=4 2>/dev/null | grep ': values=' | cut -d= -f2)"
+			hp="$(amixer -c 1 cget numid=1 2>/dev/null | grep ': values=' | cut -d= -f2)"
+			combo="$(amixer -c 1 cget numid=5 2>/dev/null | grep ': values=' | cut -d= -f2)"
+			if [ "$combo" = "1" ]; then
+				echo "both"
+			elif [ "$hp" = "1" ] && [ "$spk" = "0" ]; then
+				echo "headphones"
+			else
+				echo "speaker"
+			fi
+			;;
+	esac
+}
+
+_routesubmenu() {
+	cur_route="$(route get)"
+	if [ "$cur_route" = "both" ]; then
+		printf "%s %s Route: Both ^ true\n" "$icon_chk" "$icon_spk"
+		printf "  %s Switch to Speaker ^ route speaker\n" "$icon_spk"
+		printf "  %s Switch to Headphones ^ route headphones\n" "$icon_hdp"
+	elif [ "$cur_route" = "headphones" ]; then
+		printf "%s %s Route: Headphones ^ true\n" "$icon_chk" "$icon_hdp"
+		printf "  %s Switch to Speaker ^ route speaker\n" "$icon_spk"
+		printf "  %s Switch to Both ^ route both\n" "$icon_spk"
+	else
+		printf "%s %s Route: Speaker ^ true\n" "$icon_chk" "$icon_spk"
+		printf "  %s Switch to Headphones ^ route headphones\n" "$icon_hdp"
+		printf "  %s Switch to Both ^ route both\n" "$icon_spk"
+	fi
 }
 
 # adjust *input* vol/mute
@@ -210,8 +276,6 @@ _cardssubmenu() {
 
 # get a list of input ports
 _inportssubmenu() {
-	# if the Headset is NOT plugged in, then do not display Headset
-	# as a option, as clicking on it causes pulse to unset the source!!
 	[ -z "$1" ] && default_source="$(pactl get-default-source)" || default_source="$1"
 	active_in_port="$(devicegetinput "$default_source")"
 	pactl --format=json list sources | jq -r ".[] | select(.name == \"$default_source\" ) | .ports[] | select(.availability != \"not available\" ) | .name" | sed 's/\[In] //' | while read -r line; do
@@ -258,6 +322,7 @@ grep . <<EOF
 $icon_cls Close Menu  ^ exit
 Output:
 $(_sinkssubmenu "$default_sink_name")
+$(_routesubmenu)
 $(
 if [ "$cur_vol" != "muted" ]; then
 	printf "  %s Volume (%s%%) ^ volup\n" "$icon_aru" "$cur_vol"
@@ -326,6 +391,11 @@ case "$cmd" in
 		verb="$1"
 		shift
 		device"$verb" "$1"
+		;;
+	route)
+		verb="$1"
+		shift
+		route "$verb" "$@"
 		;;
 	notify)
 		notifyvol "$(volget)"
