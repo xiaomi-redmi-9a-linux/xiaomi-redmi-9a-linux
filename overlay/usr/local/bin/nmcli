@@ -1,0 +1,90 @@
+#!/bin/sh
+# Complete wpa_supplicant / nl80211 -> nmcli compatibility bridge for Sxmo
+
+args="$*"
+
+get_wifi_info() {
+    link=$(iw dev wlan0 link 2>/dev/null)
+    if echo "$link" | grep -q "Connected to"; then
+        WIFI_CONNECTED=1
+        WIFI_SSID=$(echo "$link" | awk -F': ' '/SSID/{print $2}')
+        WIFI_SIGNAL_DBM=$(echo "$link" | awk -F': ' '/signal/{print $2}' | awk '{print $1}')
+        WIFI_SIGNAL_DBM="${WIFI_SIGNAL_DBM:--50}"
+        if [ "$WIFI_SIGNAL_DBM" -ge -50 ] 2>/dev/null; then
+            WIFI_SIGNAL=100
+        elif [ "$WIFI_SIGNAL_DBM" -le -100 ] 2>/dev/null; then
+            WIFI_SIGNAL=0
+        else
+            WIFI_SIGNAL=$(( 2 * (WIFI_SIGNAL_DBM + 100) ))
+        fi
+    else
+        WIFI_CONNECTED=0
+        WIFI_SSID=""
+        WIFI_SIGNAL=0
+    fi
+}
+
+case "$args" in
+    *"radio"*)
+        if [ "$2" = "off" ] || [ "$3" = "off" ]; then
+            rfkill block wifi 2>/dev/null || true
+        elif [ "$2" = "on" ] || [ "$3" = "on" ]; then
+            rfkill unblock wifi 2>/dev/null || true
+        fi
+        if rfkill list wifi 2>/dev/null | grep -q "Soft blocked: yes"; then
+            echo "disabled"
+        else
+            echo "enabled"
+        fi
+        ;;
+    *"con show --active"*|*"c show --active"*|*"connection show --active"*)
+        get_wifi_info
+        if [ "$WIFI_CONNECTED" = "1" ]; then
+            echo "${WIFI_SSID:-Wi-Fi}:11111111-2222-3333-4444-555555555555:802-11-wireless:wlan0"
+        fi
+        ;;
+    *"device wifi"*|*"dev wifi"*)
+        get_wifi_info
+        printf "IN-USE  SIGNAL  SSID\n"
+        if [ "$WIFI_CONNECTED" = "1" ]; then
+            printf "*       %d      %s\n" "$WIFI_SIGNAL" "${WIFI_SSID:-Wi-Fi}"
+        fi
+        ;;
+    *"GENERAL.TYPE,GENERAL.DEVICE"*)
+        echo "wifi"
+        echo "wlan0"
+        ;;
+    *"GENERAL.TYPE"*)
+        echo "wifi"
+        ;;
+    *"device show"*)
+        get_wifi_info
+        echo "GENERAL.DEVICE:wlan0"
+        echo "GENERAL.TYPE:wifi"
+        echo "GENERAL.CONNECTION:${WIFI_SSID:---}"
+        ;;
+    *"device monitor"*|*"d monitor"*)
+        last_state=""
+        while true; do
+            get_wifi_info
+            if [ "$WIFI_CONNECTED" = "1" ]; then
+                new_state="connected"
+            else
+                new_state="disconnected"
+            fi
+            if [ "$new_state" != "$last_state" ]; then
+                last_state="$new_state"
+                echo "wlan0: $new_state"
+            fi
+            sleep 3
+        done
+        ;;
+    *)
+        get_wifi_info
+        if [ "$WIFI_CONNECTED" = "1" ]; then
+            echo "wlan0: connected to $WIFI_SSID"
+        else
+            echo "wlan0: disconnected"
+        fi
+        ;;
+esac
