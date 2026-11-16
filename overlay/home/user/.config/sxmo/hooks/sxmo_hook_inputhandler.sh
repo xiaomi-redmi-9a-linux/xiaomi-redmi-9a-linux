@@ -385,32 +385,32 @@ case "$ACTION" in
 		exit 0
 		;;
 	"voldown_one")
+		sxmo_audio.sh vol down 5
+		exit 0
+		;;
+	"voldown_two")
 		if [ -n "$SXMO_NO_VIRTUAL_KEYBOARD" ]; then
 			sxmo_killwindow.sh
 		else
 			sxmo_keyboard.sh toggle
 		fi
-		exit
-		;;
-	"voldown_two")
-		sxmo_wm.sh togglelayout
-		exit
+		exit 0
 		;;
 	"voldown_three")
 		sxmo_killwindow.sh
-		exit
+		exit 0
 		;;
 	"volup_one")
-		sxmo_appmenu.sh "$WMCLASS" "$WMNAME"
-		exit
+		sxmo_audio.sh vol up 5
+		exit 0
 		;;
 	"volup_two")
-		sxmo_appmenu.sh sys
-		exit
+		sxmo_appmenu.sh "$WMCLASS" "$WMNAME"
+		exit 0
 		;;
 	"volup_three")
-		sxmo_wmmenu.sh
-		exit
+		sxmo_appmenu.sh sys
+		exit 0
 		;;
 	"rightleftedge")
 		sxmo_wm.sh previousworkspace
