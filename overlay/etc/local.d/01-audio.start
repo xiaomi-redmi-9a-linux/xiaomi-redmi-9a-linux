@@ -1,5 +1,11 @@
 #!/bin/sh
+# Enable speaker switches on card 1
 amixer -c 1 cset numid=1 1
 amixer -c 1 cset numid=2 1
 amixer -c 1 cset numid=4 1
 amixer -c 1 cset numid=12 1
+
+# Configure comfortable analog gain baseline (-30 dB total cut)
+amixer -c 1 set 'Lineout_PGAL_GAIN' -- '-10Db'
+amixer -c 1 set 'Lineout_PGAR_GAIN' -- '-10Db'
+amixer -c 1 set 'Apply_N12DB_Gain' 'On'
