@@ -103,7 +103,10 @@ fi
 chmod 755 "$MOUNT_DIR/usr/bin/sxmo_deviceprofile_mediatek,MT6765.sh" 2>/dev/null || true
 chmod 755 "$MOUNT_DIR/usr/bin/sxmo_jackmon" 2>/dev/null || true
 chmod 755 "$MOUNT_DIR/usr/bin/sxmo_audio.sh" 2>/dev/null || true
+chmod 755 "$MOUNT_DIR/usr/bin/sxmo_soundmonitor.sh" 2>/dev/null || true
 chmod 755 "$MOUNT_DIR/usr/local/bin/mtk-fb-blank" 2>/dev/null || true
+chmod 755 "$MOUNT_DIR/usr/local/bin/nmcli" 2>/dev/null || true
+chmod 755 "$MOUNT_DIR/usr/share/sxmo/default_hooks/"*.sh 2>/dev/null || true
 chmod +x "$MOUNT_DIR/etc/local.d/"*.start 2>/dev/null || true
 chmod +x "$MOUNT_DIR/home/user/.config/sxmo/hooks/"*.sh 2>/dev/null || true
 chmod 755 "$MOUNT_DIR/home/user/.xinitrc" 2>/dev/null || true
