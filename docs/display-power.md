@@ -19,12 +19,14 @@ When unblanked, the Novatek touch controller re-initializes and the display cont
 
 ### 2. Button Debounce & Cooldown Lockout
 Sxmo uses `bonsaid` (Bonsai daemon) to handle hardware button transitions from evdev:
-* **Hold Delay (`power_pressed`):** 800ms threshold for long-press actions.
-* **Click Delay (`power_released`):** 200ms debounce delay for snappy release.
+* **Hold Delay (`power_pressed`):** 400ms threshold for long-press actions (matches upstream Sxmo standard configuration).
+* **Click Delay (`power_released`):** 400ms debounce delay for multi-click transitions.
 * **Lockout Cooldown Guard:** [`sxmo_hook_inputhandler.sh`](../overlay/home/user/.config/sxmo/hooks/sxmo_hook_inputhandler.sh) implements a 1.0s timestamp lockout. Rapid mechanical bounces or trailing taps within 1000ms are safely ignored.
 * **Unconditional Wakeup:** When the screen is locked or off, any power button click explicitly runs `sxmo_state.sh set unlock` instead of toggling, ensuring the screen turns on and stays on.
 
 ### 3. Kernel Suspend Stability
+* In [`mtkfb.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/misc/mediatek/video/mt6765/videox/mtkfb.c):
+  Set `fbi->skip_vt_switch = true;` and `pm_set_vt_switch(0);` before registering the framebuffer. This prevents Linux's VT console subsystem (`CONFIG_VT_CONSOLE_SLEEP`) from switching to `SUSPEND_CONSOLE` on suspend entry, which would otherwise unblank the screen, turn on backlight to 1023, and trigger `pri_disp_wakelock` abort loops.
 * In [`primary_display.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/misc/mediatek/video/mt6765/videox/primary_display.c):
   Gated `primary_display_esd_check_enable(0)` during suspend to prevent asynchronous ESD check CMDQ packets to sleeping LCM.
 * In [`mtk-pmic-keys.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/input/keyboard/mtk-pmic-keys.c):
