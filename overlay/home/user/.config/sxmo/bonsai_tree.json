@@ -5,7 +5,7 @@
     "transitions": [
       {
         "type": "delay",
-        "delay_duration": 800000000,
+        "delay_duration": 400000000,
         "transitions": [
           {
             "type": "exec",
@@ -25,7 +25,7 @@
         "transitions": [
           {
             "type": "delay",
-            "delay_duration": 200000000,
+            "delay_duration": 400000000,
             "transitions": [
               {
                 "type": "exec",
@@ -45,7 +45,7 @@
             "transitions": [
               {
                 "type": "delay",
-                "delay_duration": 200000000,
+                "delay_duration": 400000000,
                 "transitions": [
                   {
                     "type": "exec",
