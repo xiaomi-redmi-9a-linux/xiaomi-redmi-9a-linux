@@ -39,9 +39,9 @@ Sxmo uses `bonsaid` (Bonsai daemon) to handle hardware button transitions from e
 ### 1. Automatic Screen Off (`idle_locker`)
 The `idle_locker` background job runs under Sxmo:
 ```sh
-sxmo_idle.sh -w timeout "${SXMO_UNLOCK_IDLE_TIME:-120}" "sxmo_state.sh idle"
+sxmo_idle.sh -w timeout "${SXMO_UNLOCK_IDLE_TIME:-15}" "sxmo_state.sh idle"
 ```
-After 120 seconds of user touch/button inactivity:
+After 15 seconds (configured via `SXMO_UNLOCK_IDLE_TIME=15` in the hardware profile) of user touch/button inactivity:
 1. `sxmo_state.sh idle` transitions system state from `unlock` to `screenoff`.
 2. `sxmo_hook_screenoff.sh` calls `mtk-fb-blank off` to turn off LCM power and touch controller.
 3. MediaTek's display driver releases the kernel-level `pri_disp_wakelock`.
