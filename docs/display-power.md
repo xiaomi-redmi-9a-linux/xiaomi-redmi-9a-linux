@@ -77,3 +77,26 @@ The `sxmo_autosuspend` service runs continuously under `superd`:
 3. Writes back the verified wakeup count and executes `rtcwake -m mem` via `sxmo_suspend.sh`.
 4. The system enters low-power suspend-to-RAM (SPM deep sleep).
 5. Pressing the physical **Power Button** triggers an interrupt via `mtk-pmic-keys`, instantaneously resuming execution and restoring the display.
+
+---
+
+## Battery UI & D-Bus Launch Helper Recovery
+
+### 1. D-Bus Service Activation Fix
+On Alpine Linux, the system D-Bus daemon runs under the unprivileged `messagebus` account. Root-level on-demand service activation relies on `/usr/libexec/dbus-daemon-launch-helper`.
+
+If permissions are set to `root:root` mode `0750`, `dbus-daemon` cannot execute the helper, triggering:
+```
+Failed to execute program org.freedesktop.UPower: Permission denied
+```
+Fixed by assigning group ownership and setuid permissions:
+```sh
+chown root:messagebus /usr/libexec/dbus-daemon-launch-helper
+chmod 4750 /usr/libexec/dbus-daemon-launch-helper
+```
+With this fix, `upowerd` and `polkitd` activate cleanly on demand.
+
+### 2. Status Bar Battery Percentage & UPower Monitoring
+* **Battery Monitor Daemon:** `sxmo_battery_monitor` runs under `superd` executing `upower -m`, streaming kernel power supply uevents into `sxmo_hook_battery.sh`.
+* **Percentage Configuration:** In [`overlay/etc/environment`](../overlay/etc/environment) and [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_statusbar.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_statusbar.sh), `SXMO_BAR_SHOW_BAT_PER=1` is enabled by default.
+* **Status Bar Output:** Sxmo renders both the dynamic charging/discharging glyph and current percentage (e.g. `󰂉 66%`). Periodic statusbar refreshes ensure accurate display across suspend and unlock transitions.

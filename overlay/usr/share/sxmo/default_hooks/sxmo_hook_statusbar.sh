@@ -303,6 +303,7 @@ set_network() {
 }
 
 set_battery() {
+	SXMO_BAR_SHOW_BAT_PER="${SXMO_BAR_SHOW_BAT_PER:-1}"
 	name="$1"
 	state="$2"
 	percentage="$3"
@@ -438,6 +439,23 @@ set_volume() {
 	sxmobar -a volume 50 "$VOLCMP"
 }
 
+set_radio() {
+	if [ -S /run/mtk_fm.sock ]; then
+		ST="$(/usr/local/bin/mtk_fm status 2>/dev/null)"
+		case "$ST" in
+			PLAYING*)
+				FREQ="$(printf "%s" "$ST" | cut -d " " -f 2)"
+				sxmobar -a radio 55 "$icon_rad $FREQ"
+				;;
+			*)
+				sxmobar -d radio
+				;;
+		esac
+	else
+		sxmobar -d radio
+	fi
+}
+
 set_notch() {
 	if [ -n "$SXMO_NOTCH" ] && ! pidof peanutbutter > /dev/null; then
 		sxmobar -a notch "${SXMO_NOTCH_PRIO:-29}" "$SXMO_NOTCH"
@@ -456,7 +474,7 @@ case "$1" in
 		shift
 		set_battery "$@"
 		;;
-	time|modem|volume|state|notifications|notch)
+	time|modem|volume|radio|state|notifications|notch)
 		set_"$1"
 		;;
 	periodics|state_change) # 55 s loop and screenlock triggers
@@ -465,8 +483,10 @@ case "$1" in
 			set_modem
 		fi
 		set_notch
+		set_radio
 		set_state
 		set_network wifi wlan0
+		sxmo_hook_battery.sh "/org/freedesktop/UPower/devices/battery_battery" "device changed" >/dev/null 2>&1
 		;;
 	all)
 		sxmobar -r
@@ -481,6 +501,7 @@ case "$1" in
 		set_notifications
 		set_notch
 		set_network wifi wlan0
+		sxmo_hook_battery.sh "/org/freedesktop/UPower/devices/battery_battery" "device changed" >/dev/null 2>&1
 		;;
 	*)
 		exit # swallow it !

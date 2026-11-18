@@ -1,0 +1,6 @@
+#
+# This file is parsed by pam_env module
+#
+# Syntax: simple "KEY=VAL" pairs on separate lines
+#
+SXMO_BAR_SHOW_BAT_PER=1

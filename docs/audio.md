@@ -101,3 +101,35 @@ The lightweight C daemon `sxmo_jackmon` ([`src/sxmo_jackmon.c`](../src/sxmo_jack
 1. On startup, reads current jack switch state via `ioctl(EVIOCGSW)` and routes audio appropriately.
 2. When headphones are plugged in, automatically switches to headphones and displays an on-screen banner (` Audio Output: Switched to Headphones`).
 3. When unplugged, automatically reverts audio to the built-in speaker (` Audio Output: Switched to Built-in Speaker`).
+
+---
+
+## FM Radio Architecture & Touch GUI
+
+The Redmi 9A features an onboard MediaTek MT6631 FM receiver module (`/dev/fm`) communicating over I2S to the AFE and MT6357 PMIC.
+
+### 1. Backend Daemon (`mtk_fm`)
+The native C daemon [`src/mtk_fm.c`](../src/mtk_fm.c) runs at `/usr/local/bin/mtk_fm`:
+* **Device Control:** Controls `/dev/fm` using MediaTek ioctls (`FM_IOCTL_POWERUP`, `FM_IOCTL_POWERDOWN`, `FM_IOCTL_TUNE`, `FM_IOCTL_GETRSSI`).
+* **ALSA Stream Capture:** Opens PCM device 21 (`/dev/snd/pcmC1D21p`) via `tinyalsa` to route FM audio into the AFE interconnect.
+* **MT6357 Codec Transitions:**
+  - **Speaker Route:** `numid=5` (`Headset_Speaker_Amp_Switch`) must be set to `0` (enabling the Lineout buffer circuit in kernel lines 1000 & 3778). `numid=4` (`Speaker_Amp_Switch`) is toggled `0 -> 1` to configure `AUDDEC_ANA_CON4` connecting DAC to LOL MUX, and `numid=12` is asserted to pulse the external loudspeaker amplifier. Lineout PGAL/R gain is set to `4Db`.
+  - **Headphone Route:** Speaker amplifiers are shut off, and `Audio_Amp_L/R` (numid 1, 2) are enabled with Headset PGAL/R gain set to `4Db`.
+  - **Antenna Keepalive:** `numid=21` (`Headset_Speaker_Amp_Switch` antenna path) remains asserted so the 3.5mm headphone cable functions as the FM antenna even when routing audio to the loudspeaker.
+* **Seek & Scan:** Implements a fast 200 kHz step-and-sample seek loop and full sweep routine across 87.5–108.0 MHz with a `-88 dBm` RSSI lock threshold.
+* **Socket IPC:** Listens on `/run/mtk_fm.sock` supporting `STATUS`, `START <freq>`, `TUNE <freq>`, `SEEK <UP|DOWN>`, `SCAN`, `ROUTE <headphone|speaker>`, `VOL <0-100>`, and `STOP`.
+* **Signal Safety:** Ignores `SIGPIPE` and uses `MSG_NOSIGNAL` on client disconnects to prevent daemon interruption.
+
+### 2. Touchscreen Frontend (`fm_radio_gui.py`)
+A touch-optimized GTK3 application located at [`overlay/usr/local/bin/fm_radio_gui.py`](../overlay/usr/local/bin/fm_radio_gui.py):
+* Large live frequency display and RSSI badge.
+* Touch buttons for Seek Down/Up, fine stepping (±0.1 MHz), and interactive frequency slider.
+* Audio route buttons: **🎧 Headphones** and **🔊 Speaker**.
+* Volume slider mapped to MT6357 digital gain (0–524288).
+* Horizontal station presets carousel with "+ Favorite" and "🔍 Auto Scan" buttons.
+* Dedicated touch **✕** close button in the header bar.
+
+### 3. Desktop & Status Bar Integration
+* **App Registration:** Added to [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_apps.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_apps.sh) as `󰐹 FM Radio` under the Applications menu.
+* **Context Menu:** [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_contextmenu.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_contextmenu.sh) handles `*[Ff]m_radio*` offering *Close App*, *Toggle Audio Route*, and *Power Off FM*.
+* **Dynamic Status Bar:** [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_statusbar.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_statusbar.sh) displays `󰐹 <frequency>` (e.g. `󰐹 98.3`) in real time when FM is playing, updates during tuning, and clears on stop.

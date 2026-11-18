@@ -106,3 +106,26 @@ wpa_cli -i wlan0
 ```
 
 Once connected, DHCP will automatically assign an IP address via `udhcpc`, and the status bar will immediately transition from red disconnected (`󰤮`) to the white connected icon (`󰤨`) with full signal bars.
+
+---
+
+## Static IP Configuration (`192.168.1.50`)
+
+To ensure stable SSH and remote development access across reboots and network re-associations, a static IP assignment is configured in [`overlay/etc/network/interfaces`](../overlay/etc/network/interfaces):
+
+```ini
+auto lo
+iface lo inet loopback
+
+auto wlan0
+iface wlan0 inet static
+    address 192.168.1.50
+    netmask 255.255.255.0
+    gateway 192.168.1.1
+```
+
+DNS resolvers are maintained in `/etc/resolv.conf`:
+```
+nameserver 1.1.1.1
+nameserver 192.168.1.1
+```

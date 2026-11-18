@@ -16,11 +16,12 @@ Boots directly from an external MicroSD card via native Android fastboot. **Inte
 | **Backlight Control** | ✅ Working | PWM brightness (`/sys/class/leds/lcd-backlight/brightness`) |
 | **Hardware Keys** | ✅ Working | PMIC Power button + Volume Up/Down with Bonsai debounce |
 | **Audio (Speaker & Jack)**| ✅ Working | Built-in speaker + 3.5mm jack auto-detection daemon (`sxmo_jackmon`) |
-| **Wi-Fi** | ✅ Working | MediaTek WMT SDIO Wi-Fi (`wlan0`) with live signal bar tracking (`nmcli` bridge) |
+| **FM Radio** | ✅ Working | Built-in MT6631 FM receiver, loudspeaker & headphone routing, touch GUI app (`fm_radio_gui.py`), seek/scan |
+| **Wi-Fi & Networking** | ✅ Working | MediaTek WMT SDIO Wi-Fi (`wlan0`), live signal bars (`nmcli` bridge), static IP (`192.168.1.50`) |
 | **Bluetooth** | ⚠️ Partial | BlueZ active; firmware loader configured |
-| **Battery & Charging** | ✅ Working | Accurate OCV voltage/capacity reporting, fast charging active |
+| **Battery & Charging** | ✅ Working | True OCV fuelgauge, monotonic rate limiting, status bar glyph (`󰂉`) & percentage |
 | **USB Networking** | ✅ Working | USB Gadget Ethernet (RNDIS / CDC-NCM / ACM serial console) |
-| **Power Management** | ✅ Working | Debounced screen sleep/wake, 1.0s cooldown guard |
+| **Power Management** | ✅ Working | S2idle sleep-of-death fix, debounced power key, 15s idle locker, deep suspend |
 | **Clock & Timezone** | ✅ Working | Asia/Kolkata (IST) with 12-hour AM/PM status bar & lockscreen widget |
 | **Internal Storage** | 🛡️ Protected | Never touched; system runs entirely from MicroSD (`/dev/mmcblk1p1`) |
 
