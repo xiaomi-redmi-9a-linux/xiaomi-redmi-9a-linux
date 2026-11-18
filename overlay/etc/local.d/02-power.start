@@ -1,5 +1,5 @@
 #!/bin/sh
 echo 0 > /sys/class/vtconsole/vtcon1/bind 2>/dev/null || true
-echo deep > /sys/power/mem_sleep 2>/dev/null || true
+echo s2idle > /sys/power/mem_sleep 2>/dev/null || true
 echo 3 4 1 7 > /proc/sys/kernel/printk
 iw wlan0 set power_save on 2>/dev/null || true

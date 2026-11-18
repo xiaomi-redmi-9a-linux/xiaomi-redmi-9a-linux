@@ -24,13 +24,27 @@ Sxmo uses `bonsaid` (Bonsai daemon) to handle hardware button transitions from e
 * **Lockout Cooldown Guard:** [`sxmo_hook_inputhandler.sh`](../overlay/home/user/.config/sxmo/hooks/sxmo_hook_inputhandler.sh) implements a 1.0s timestamp lockout. Rapid mechanical bounces or trailing taps within 1000ms are safely ignored.
 * **Unconditional Wakeup:** When the screen is locked or off, any power button click explicitly runs `sxmo_state.sh set unlock` instead of toggling, ensuring the screen turns on and stays on.
 
-### 3. Kernel Suspend Stability
+### 3. Kernel Suspend Stability & Sleep-of-Death Prevention
+* In [`kernel/power/suspend.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/kernel/power/suspend.c):
+  Set `mem_sleep_default = PM_SUSPEND_TO_IDLE;`. On MT6765, hardware `deep` suspend delegates powerdown to MediaTek's proprietary SPM/SSPM firmware which relies on Android-specific Netlink daemons. Without them, prolonged `deep` sleep cuts power to the AP and ignores power key interrupts (Sleep of Death). Using `s2idle` keeps standard Linux kernel IRQs active, allowing instant wake on power key while still achieving deep idle power reduction.
+* In [`overlay/etc/local.d/02-power.start`](../overlay/etc/local.d/02-power.start):
+  Explicitly sets `echo s2idle > /sys/power/mem_sleep` and enables Wi-Fi power saving (`iw wlan0 set power_save on`).
 * In [`mtkfb.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/misc/mediatek/video/mt6765/videox/mtkfb.c):
   Set `fbi->skip_vt_switch = true;` and `pm_set_vt_switch(0);` before registering the framebuffer. This prevents Linux's VT console subsystem (`CONFIG_VT_CONSOLE_SLEEP`) from switching to `SUSPEND_CONSOLE` on suspend entry, which would otherwise unblank the screen, turn on backlight to 1023, and trigger `pri_disp_wakelock` abort loops.
 * In [`primary_display.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/misc/mediatek/video/mt6765/videox/primary_display.c):
   Gated `primary_display_esd_check_enable(0)` during suspend to prevent asynchronous ESD check CMDQ packets to sleeping LCM.
 * In [`mtk-pmic-keys.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/input/keyboard/mtk-pmic-keys.c):
   Enabled `device_init_wakeup(&pdev->dev, true)` for reliable wakeup from MT6357 PMIC.
+
+---
+
+## Fuel Gauge & Battery State-of-Charge (SoC) Architecture
+
+MediaTek's vendor driver historically relied on an Android daemon (`fuelgauged`) to compute SoC. In native Linux:
+1. **$I \times R$ Internal Resistance Compensation:** [`drivers/power/supply/mtk_battery.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/power/supply/mtk_battery.c) calculates true open-circuit cell voltage ($V_{\text{ocv}} = V_{\text{term}} - I_{\text{batt}} \times R_{\text{int}}$) using $R_{\text{int}} \approx 150\text{ m}\Omega$ from real-time current sensing (`GAUGE_PROP_BATTERY_CURRENT`). This eliminates the 10–15% battery drops under CPU load and artificial jumps when charging.
+2. **IIR Filter & Monotonic Rate Limiting:** Smooths OCV fluctuations and restricts capacity changes to 1% per 15s (or 3s if gap > 10%), ensuring monotonic progression (charging only steps up, discharging only steps down).
+3. **Hardware PMIC RTC Restore:** On boot, the driver reads `GAUGE_PROP_RTC_UI_SOC` from MT6357 PMIC hardware registers so the battery percentage displays accurately immediately upon boot without any startup dip or crawling.
+4. **Low Battery Fast-Track:** Bypasses rate-limiting below $3450\text{ mV}$ for emergency low-battery shutdown safety.
 
 ---
 
