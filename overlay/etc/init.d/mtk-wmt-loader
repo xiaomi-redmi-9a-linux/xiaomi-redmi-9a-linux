@@ -21,9 +21,10 @@ start_pre() {
 }
 
 start_post() {
-	ebegin "Waiting for wlan0"
+	ebegin "Waiting for wlan0 and enabling Wi-Fi power saving"
 	for i in $(seq 1 15); do
 		if ip link show wlan0 >/dev/null 2>&1; then
+			iw dev wlan0 set power_save on >/dev/null 2>&1 || true
 			eend 0
 			return 0
 		fi
