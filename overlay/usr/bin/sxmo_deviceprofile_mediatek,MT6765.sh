@@ -13,7 +13,7 @@ export SXMO_STATUS_DATE_FORMAT="%I:%M %p"
 export SXMO_BAR_HEIGHT="64"
 export SXMO_SIDEPAD="14"
 export SXMO_BOTTOMPAD="24"
-export SXMO_UNLOCK_IDLE_TIME="15"
+export SXMO_UNLOCK_IDLE_TIME="120"
 export SXMO_STATES="unlock screenoff"
 export SXMO_SUSPENDABLE_STATES="nosuspend 0"
 

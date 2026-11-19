@@ -98,7 +98,7 @@ esac
 # Turn on auto-suspend
 if sxmo_wakelock.sh isenabled; then
 	sxmo_wakelock.sh lock sxmo_not_suspendable infinite
-	superctl start sxmo_autosuspend
+	# superctl start sxmo_autosuspend
 fi
 
 # To setup initial unlock state

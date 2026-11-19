@@ -66,10 +66,16 @@ After 15 seconds (configured via `SXMO_UNLOCK_IDLE_TIME=15` in the hardware prof
 ### 2. State-Based Power Management (`SXMO_SUSPENDABLE_STATES`)
 Configured in [`overlay/usr/bin/sxmo_deviceprofile_mediatek,MT6765.sh`](../overlay/usr/bin/sxmo_deviceprofile_mediatek,MT6765.sh):
 ```sh
-export SXMO_SUSPENDABLE_STATES="none"
+export SXMO_SUSPENDABLE_STATES="nosuspend 0"
+export SXMO_UNLOCK_IDLE_TIME="120"
 ```
-* On MT6765 native Linux, calling `rtcwake -m mem` causes display CMDQ desync and CONSYS clock check failures on wake from deep sleep. Setting `SXMO_SUSPENDABLE_STATES="none"` ensures Sxmo holds `sxmo_not_suspendable`, keeping the kernel out of `s2idle` while still blanking the display and sleeping touch controller.
-* Power consumption in screen-off state drops significantly through display powerdown, touch sleep, and CPU frequency scaling down to idle governor minimums, avoiding Sleep of Death entirely.
+* **Elimination of `rtcwake -m mem` (Kernel Suspend):** On MT6765 native Linux, invoking `rtcwake -m mem` puts the SoC into `s2idle` which desynchronizes the display CMDQ engine and crashes the CONNSYS hardware clock on wakeup (`connsys clock check fail 0x18007000(0x50001)`). 
+* To prevent this permanently:
+  1. `superctl start sxmo_autosuspend` is disabled in [`sxmo_hook_start.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_start.sh).
+  2. [`sxmo_suspend.sh`](../overlay/usr/bin/sxmo_suspend.sh) is replaced with an immediate `exit 0` no-op.
+  3. `~/.cache/sxmo/sxmo.nosuspend` is touched to block any residual suspend attempts.
+  4. `SXMO_SUSPENDABLE_STATES="nosuspend 0"` ensures `sxmo_state.sh` recognizes screenoff as non-suspendable without entering BusyBox ash `shift 2` loops.
+* **Idle Power Profile:** When entering screenoff, `mtk-fb-blank off` powers down the LCM panel, shuts off the backlight to 0W, and puts the Novatek touchscreen to sleep (`nvt_ts_suspend`). The CPU drops to 800MHz idle governor minimums. Wakeup on physical power button is instantaneous (0.1s) with zero Sleep of Death.
 
 ---
 
