@@ -20,7 +20,7 @@ Boots directly from an external MicroSD card via native Android fastboot. **Inte
 | **FM Radio** | ✅ Working | Built-in MT6631 FM receiver, loudspeaker & headphone routing, touch GUI app (`fm_radio_gui.py`), seek/scan |
 | **Sensors** | ✅ Working | Native Rust proxy (`mtk-sensor-proxy`), FreeDesktop `net.hadess.SensorProxy`, Accelerometer (orientation/tilt), Ambient Light (lux), Proximity (near/far) |
 | **Wi-Fi & Networking** | ✅ Working | MediaTek WMT SDIO Wi-Fi (`wlan0`), live signal bars (`nmcli` bridge), static IP (`192.168.1.50`) |
-| **Bluetooth** | ⚠️ Partial | BlueZ active; firmware loader configured |
+| **Bluetooth** | ✅ Working | Bluetooth 5.0 (MT6631), native Rust bridge (`mtk-bt-bridge`), BlueZ 5.86, scanning/pairing |
 | **Battery & Charging** | ✅ Working | True OCV fuelgauge, monotonic rate limiting, status bar glyph (`󰂉`) & percentage |
 | **USB Networking** | ✅ Working | USB Gadget Ethernet (RNDIS / CDC-NCM / ACM serial console) |
 | **Power Management** | ✅ Working | Sleep-of-death fix (rtcwake autosuspend disabled), 2-min idle locker, `mtk-fb-blank` 0W display powerdown, debounced power key |
