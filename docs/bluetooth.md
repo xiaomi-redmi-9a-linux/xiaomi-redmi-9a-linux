@@ -115,3 +115,18 @@ List discovered devices:
 ```bash
 bluetoothctl devices
 ```
+
+---
+
+## Power Management & Standby Optimization
+
+1. **Boot Default (`AutoEnable=false`):**
+   * Configured in `/etc/bluetooth/main.conf`.
+   * Bluetooth starts powered down on boot, saving ~66 mA continuously until turned on via the UI toggle.
+
+2. **Smart Screen-Off Sleep:**
+   * Handled by [`sxmo_hook_screenoff.sh`](file:///media/primaryHdd/Coding/Android/xiaomi-redmi-9a-linux/overlay/home/user/.config/sxmo/hooks/sxmo_hook_screenoff.sh) and [`sxmo_hook_unlock.sh`](file:///media/primaryHdd/Coding/Android/xiaomi-redmi-9a-linux/overlay/home/user/.config/sxmo/hooks/sxmo_hook_unlock.sh).
+   * When the screen locks or times out:
+     * If no devices are connected, Bluetooth powers off automatically (saving 66 mA in standby).
+     * If headphones/speakers/accessories are active, Bluetooth stays ON to maintain uninterrupted audio.
+   * On screen unlock/wake, Bluetooth power is automatically restored if it was auto-slept.
