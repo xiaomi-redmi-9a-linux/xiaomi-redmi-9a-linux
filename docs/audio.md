@@ -67,12 +67,18 @@ Locking the sink to 16-bit PCM (`audio.format = "S16LE"`) maps to `AFE_WLEN_16_B
 ## Audio Routing: Speaker vs. 3.5mm Headphone Jack
 
 On the MT6357 PMIC, the analog DAC register (`AUDDEC_ANA_CON0`) is shared between speaker and headphone paths:
-- **Speaker:** Controlled by `Speaker_Amp_Switch` (numid 4) and `Ext_Speaker_Amp_Switch` (numid 12).
+- **Speaker:** Controlled by `Speaker_Amp_Switch` (numid 4) and `Ext_Speaker_Amp_Switch` (numid 12). Both switches require explicit `0 -> 1` toggling so the kernel's `on_change` handler executes `Speaker_Amp_Change(true)` (connecting DAC to LOL MUX) and `Ext_Speaker_Amp_Change(true)` (sending 1-wire pulses to wake the external amplifier IC).
 - **Headphone Jack:** Controlled by `Audio_Amp_L_Switch` (numid 2) and `Audio_Amp_R_Switch` (numid 1).
-- **Headphone Pre-amp Gain:** `Headset_PGAL_GAIN` / `Headset_PGAR_GAIN` (numid 6 & 7) set to comfortable `-12Db`.
-- **Lineout / Speaker Pre-amp Gain:** `Lineout_PGAL_GAIN` / `Lineout_PGAR_GAIN` set to `-10Db`.
+- **Headphone Pre-amp Gain:** `Headset_PGAL_GAIN` / `Headset_PGAR_GAIN` (numid 6 & 7) set to comfortable `4Db`.
+- **Lineout / Speaker Pre-amp Gain:** `Lineout_PGAL_GAIN` / `Lineout_PGAR_GAIN` set to `4Db` for loud, clear speaker output.
 
 When the speaker amplifier turns on, register `AUDDEC_ANA_CON0` is programmed to `0x3009`, cutting off the headphone path. To switch to the 3.5mm jack, speaker amplifiers must be turned off and the headphone amplifier switches toggled `Off` then `On` to trigger `Audio_Amp_Change()` and set `AUDDEC_ANA_CON0 = 0x3aff`.
+
+### Boot Default Routing
+
+At system startup, `/usr/share/sxmo/default_hooks/sxmo_hook_start.sh` checks the 3.5mm headphone jack status:
+- If headphones are plugged in at boot, `sxmo_audio.sh route headphones` is run.
+- Otherwise, `sxmo_audio.sh route speaker` is run, ensuring music and system sounds work immediately without waiting for a jack event.
 
 ### Manual Switching via `sxmo_audio.sh`
 

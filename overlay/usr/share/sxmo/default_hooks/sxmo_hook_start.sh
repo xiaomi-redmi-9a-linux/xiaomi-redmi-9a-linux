@@ -42,6 +42,13 @@ if [ -z "$SXMO_NO_AUDIO" ]; then
 	# monitor for headphone for statusbar
 	superctl start sxmo_soundmonitor
 	superctl start sxmo_jackmon
+
+	# Set initial audio hardware route: headphones if plugged in, otherwise speaker
+	if [ "$(amixer -c 1 cget numid=21 2>/dev/null | grep ': values=' | cut -d= -f2)" = "1" ]; then
+		sxmo_audio.sh route headphones >/dev/null 2>&1 || true
+	else
+		sxmo_audio.sh route speaker >/dev/null 2>&1 || true
+	fi
 fi
 
 # Periodically update some status bar components

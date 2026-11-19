@@ -99,20 +99,36 @@ route() {
 			amixer -c 1 cset numid=2 0 >/dev/null 2>&1
 			amixer -c 1 cset numid=1 1 >/dev/null 2>&1
 			amixer -c 1 cset numid=2 1 >/dev/null 2>&1
+			amixer -c 1 set 'Headset_PGAL_GAIN' -- '4Db' >/dev/null 2>&1
+			amixer -c 1 set 'Headset_PGAR_GAIN' -- '4Db' >/dev/null 2>&1
 			notify-send -r 998 "$icon_hdp Audio Output" "Switched to Headphones" 2>/dev/null || true
 			;;
 		speaker|spk)
 			amixer -c 1 cset numid=1 0 >/dev/null 2>&1
 			amixer -c 1 cset numid=2 0 >/dev/null 2>&1
 			amixer -c 1 cset numid=5 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=4 0 >/dev/null 2>&1
 			amixer -c 1 cset numid=4 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=12 0 >/dev/null 2>&1
 			amixer -c 1 cset numid=12 1 >/dev/null 2>&1
+			amixer -c 1 set 'Lineout_PGAL_GAIN' -- '4Db' >/dev/null 2>&1
+			amixer -c 1 set 'Lineout_PGAR_GAIN' -- '4Db' >/dev/null 2>&1
 			notify-send -r 998 "$icon_spk Audio Output" "Switched to Built-in Speaker" 2>/dev/null || true
 			;;
 		both)
+			amixer -c 1 cset numid=4 0 >/dev/null 2>&1
 			amixer -c 1 cset numid=4 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=12 0 >/dev/null 2>&1
 			amixer -c 1 cset numid=12 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=1 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=2 0 >/dev/null 2>&1
+			amixer -c 1 cset numid=1 1 >/dev/null 2>&1
+			amixer -c 1 cset numid=2 1 >/dev/null 2>&1
 			amixer -c 1 cset numid=5 1 >/dev/null 2>&1
+			amixer -c 1 set 'Lineout_PGAL_GAIN' -- '4Db' >/dev/null 2>&1
+			amixer -c 1 set 'Lineout_PGAR_GAIN' -- '4Db' >/dev/null 2>&1
+			amixer -c 1 set 'Headset_PGAL_GAIN' -- '4Db' >/dev/null 2>&1
+			amixer -c 1 set 'Headset_PGAR_GAIN' -- '4Db' >/dev/null 2>&1
 			notify-send -r 998 "$icon_spk Audio Output" "Switched to Both (Speaker + Headphones)" 2>/dev/null || true
 			;;
 		get)
