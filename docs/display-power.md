@@ -26,9 +26,12 @@ Sxmo uses `bonsaid` (Bonsai daemon) to handle hardware button transitions from e
 
 ### 3. Kernel Suspend Stability & Sleep-of-Death Prevention
 * In [`kernel/power/suspend.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/kernel/power/suspend.c):
-  Set `mem_sleep_default = PM_SUSPEND_TO_IDLE;`. On MT6765, hardware `deep` suspend delegates powerdown to MediaTek's proprietary SPM/SSPM firmware which relies on Android-specific Netlink daemons. Without them, prolonged `deep` sleep cuts power to the AP and ignores power key interrupts (Sleep of Death). Using `s2idle` keeps standard Linux kernel IRQs active, allowing instant wake on power key while still achieving deep idle power reduction.
+  Set `mem_sleep_default = PM_SUSPEND_TO_IDLE;`. On MT6765, hardware `deep` suspend delegates powerdown to MediaTek's proprietary SPM/SSPM firmware which relies on Android-specific Netlink daemons. Without them, prolonged `deep` sleep cuts power to the AP and ignores power key interrupts (Sleep of Death).
 * In [`overlay/etc/local.d/02-power.start`](../overlay/etc/local.d/02-power.start):
-  Explicitly sets `echo s2idle > /sys/power/mem_sleep` and enables Wi-Fi power saving (`iw wlan0 set power_save on`).
+  Explicitly sets `echo s2idle > /sys/power/mem_sleep` and ensures Wi-Fi power saving is disabled (`iw wlan0 set power_save off`). Leaving Wi-Fi `power_save on` on MT6631 SDIO caused ~700ms ping latency, packet drops, and CONSYS clock verification failures (`0x18007000(0x50001)`) upon wake.
+* In [`overlay/usr/bin/sxmo_deviceprofile_mediatek,MT6765.sh`](../overlay/usr/bin/sxmo_deviceprofile_mediatek,MT6765.sh):
+  - `export SXMO_SUSPENDABLE_STATES="none"`: Disables calling `rtcwake -m mem` (`s2idle`) on screenoff. In native Linux without Android SPM daemons, kernel `s2idle` cycles cause display CMDQ hangs and CONNSYS clock crashes after ~5 minutes. Blanking via `mtk-fb-blank off` turns off LCM panel power and suspends touch (`nvt_ts_suspend`) while keeping the CPU responsive for instant (0.1s) wakeups with zero Sleep of Death.
+  - `export SXMO_NO_MODEM="1"`: Prevents spurious "Modem crashed! 30s recovery" alerts and 30-second wakelock loops on wakeup until MTK CCCI cellular drivers are ported.
 * In [`mtkfb.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/misc/mediatek/video/mt6765/videox/mtkfb.c):
   Set `fbi->skip_vt_switch = true;` and `pm_set_vt_switch(0);` before registering the framebuffer. This prevents Linux's VT console subsystem (`CONFIG_VT_CONSOLE_SLEEP`) from switching to `SUSPEND_CONSOLE` on suspend entry, which would otherwise unblank the screen, turn on backlight to 1023, and trigger `pri_disp_wakelock` abort loops.
 * In [`primary_display.c`](file:///media/primaryHdd/Coding/Android/kernel_xiaomi_blossom_linux/drivers/misc/mediatek/video/mt6765/videox/primary_display.c):
@@ -60,23 +63,13 @@ After 15 seconds (configured via `SXMO_UNLOCK_IDLE_TIME=15` in the hardware prof
 2. `sxmo_hook_screenoff.sh` calls `mtk-fb-blank off` to turn off LCM power and touch controller.
 3. MediaTek's display driver releases the kernel-level `pri_disp_wakelock`.
 
-### 2. State-Based Autosuspend (`SXMO_SUSPENDABLE_STATES`)
+### 2. State-Based Power Management (`SXMO_SUSPENDABLE_STATES`)
 Configured in [`overlay/usr/bin/sxmo_deviceprofile_mediatek,MT6765.sh`](../overlay/usr/bin/sxmo_deviceprofile_mediatek,MT6765.sh):
 ```sh
-export SXMO_SUSPENDABLE_STATES="screenoff 5"
+export SXMO_SUSPENDABLE_STATES="none"
 ```
-* When entering `screenoff`, Sxmo starts `idle_suspender` with a 5-second cooldown timer.
-* After 5 seconds, `sxmo_wakelock.sh unlock sxmo_not_suspendable` releases the userspace inhibit lock.
-
-### 3. Deep Sleep Daemon (`sxmo_autosuspend`)
-The `sxmo_autosuspend` service runs continuously under `superd`:
-1. Reads `/sys/power/wakeup_count` (which blocks until all kernel and userspace wakelocks are released).
-2. Executes [`sxmo_hook_block_suspend.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_block_suspend.sh) to check for active blockers:
-   * **Active SSH Session:** Detects connections on `:22` and delays suspend while working remotely.
-   * **Phone Call / Audio / Hotspot:** Inhibits suspend during active streaming, hotspot, or call operations.
-3. Writes back the verified wakeup count and executes `rtcwake -m mem` via `sxmo_suspend.sh`.
-4. The system enters low-power suspend-to-RAM (SPM deep sleep).
-5. Pressing the physical **Power Button** triggers an interrupt via `mtk-pmic-keys`, instantaneously resuming execution and restoring the display.
+* On MT6765 native Linux, calling `rtcwake -m mem` causes display CMDQ desync and CONSYS clock check failures on wake from deep sleep. Setting `SXMO_SUSPENDABLE_STATES="none"` ensures Sxmo holds `sxmo_not_suspendable`, keeping the kernel out of `s2idle` while still blanking the display and sleeping touch controller.
+* Power consumption in screen-off state drops significantly through display powerdown, touch sleep, and CPU frequency scaling down to idle governor minimums, avoiding Sleep of Death entirely.
 
 ---
 
