@@ -15,6 +15,6 @@ export SXMO_SIDEPAD="14"
 export SXMO_BOTTOMPAD="24"
 export SXMO_UNLOCK_IDLE_TIME="15"
 export SXMO_STATES="unlock screenoff"
-export SXMO_SUSPENDABLE_STATES="none"
+export SXMO_SUSPENDABLE_STATES="nosuspend 0"
 
 export SXMO_NO_MODEM="1"
