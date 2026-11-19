@@ -21,7 +21,7 @@ Boots directly from an external MicroSD card via native Android fastboot. **Inte
 | **Bluetooth** | ⚠️ Partial | BlueZ active; firmware loader configured |
 | **Battery & Charging** | ✅ Working | True OCV fuelgauge, monotonic rate limiting, status bar glyph (`󰂉`) & percentage |
 | **USB Networking** | ✅ Working | USB Gadget Ethernet (RNDIS / CDC-NCM / ACM serial console) |
-| **Power Management** | ✅ Working | S2idle sleep-of-death fix, debounced power key, 15s idle locker, deep suspend |
+| **Power Management** | ✅ Working | Sleep-of-death fix (rtcwake autosuspend disabled), 2-min idle locker, `mtk-fb-blank` 0W display powerdown, debounced power key |
 | **Clock & Timezone** | ✅ Working | Asia/Kolkata (IST) with 12-hour AM/PM status bar & lockscreen widget |
 | **Internal Storage** | 🛡️ Protected | Never touched; system runs entirely from MicroSD (`/dev/mmcblk1p1`) |
 
