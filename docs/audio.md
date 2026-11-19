@@ -133,3 +133,26 @@ A touch-optimized GTK3 application located at [`overlay/usr/local/bin/fm_radio_g
 * **App Registration:** Added to [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_apps.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_apps.sh) as `󰐹 FM Radio` under the Applications menu.
 * **Context Menu:** [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_contextmenu.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_contextmenu.sh) handles `*[Ff]m_radio*` offering *Close App*, *Toggle Audio Route*, and *Power Off FM*.
 * **Dynamic Status Bar:** [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_statusbar.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_statusbar.sh) displays `󰐹 <frequency>` (e.g. `󰐹 98.3`) in real time when FM is playing, updates during tuning, and clears on stop.
+
+---
+
+## Music Player & MPRIS Media Control
+
+### 1. Touchscreen Music Player: Amberol
+The device uses **Amberol** as its primary touch music player:
+* **Mobile Touch Interface:** Libadwaita responsive layout with large touch controls (Play, Pause, Previous, Next, Seek bar, Volume slider, and Queue).
+* **Audio Engine:** Backed by GStreamer with `gst-plugin-pipewire` outputting to PipeWire 1.6.8 with 16-bit format locking (`S16LE`).
+* **Menu Entry:** Registered natively in [`overlay/usr/share/sxmo/default_hooks/sxmo_hook_apps.sh`](../overlay/usr/share/sxmo/default_hooks/sxmo_hook_apps.sh) as `󰎆 Amberol` opening `/home/user/Music`.
+* **Window Controls:** Touch `✕` button in the header bar allows 1-tap exit.
+
+### 2. MPRIS & Hardware Key Integration (`playerctl`)
+Amberol exposes standard `org.mpris.MediaPlayer2` D-Bus interfaces managed via `playerctl`:
+* **Status Bar Playback Banner:** The Sxmo status bar dynamically displays the current track and artist (e.g. `Unknown artist - Track...`).
+* **Hardware Media Keys:** Configured in `bonsai_tree.json` and `dwm` keybindings:
+  ```bash
+  playerctl play-pause  # Toggle play / pause
+  playerctl next        # Next track in queue
+  playerctl previous    # Previous track
+  playerctl stop        # Stop playback
+  ```
+* **Lockscreen Playback:** Audio continues playing in the background with the display turned off (`mtk-fb-blank off`). Waking the screen restores the player state seamlessly without stuttering or pipe drops.
