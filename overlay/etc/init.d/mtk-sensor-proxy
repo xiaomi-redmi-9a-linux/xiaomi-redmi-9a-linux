@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+
+description="MediaTek Sensor Proxy (FreeDesktop net.hadess.SensorProxy)"
+command="/usr/local/bin/mtk-sensor-proxy"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+	need dbus
+	after dbus
+}

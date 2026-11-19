@@ -18,6 +18,7 @@ Boots directly from an external MicroSD card via native Android fastboot. **Inte
 | **Audio (Speaker & Jack)**| ✅ Working | Built-in speaker + 3.5mm jack auto-detection daemon (`sxmo_jackmon`) |
 | **Music Player** | ✅ Working | Amberol touch music player (`amberol`), MPRIS lockscreen media controls (`playerctl`), PipeWire S16LE |
 | **FM Radio** | ✅ Working | Built-in MT6631 FM receiver, loudspeaker & headphone routing, touch GUI app (`fm_radio_gui.py`), seek/scan |
+| **Sensors** | ✅ Working | Native Rust proxy (`mtk-sensor-proxy`), FreeDesktop `net.hadess.SensorProxy`, Accelerometer (orientation/tilt), Ambient Light (lux), Proximity (near/far) |
 | **Wi-Fi & Networking** | ✅ Working | MediaTek WMT SDIO Wi-Fi (`wlan0`), live signal bars (`nmcli` bridge), static IP (`192.168.1.50`) |
 | **Bluetooth** | ⚠️ Partial | BlueZ active; firmware loader configured |
 | **Battery & Charging** | ✅ Working | True OCV fuelgauge, monotonic rate limiting, status bar glyph (`󰂉`) & percentage |
