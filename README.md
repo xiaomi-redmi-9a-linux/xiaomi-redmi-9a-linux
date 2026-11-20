@@ -12,6 +12,7 @@ Boots directly from an external MicroSD card via native Android fastboot. **Inte
 | :--- | :---: | :--- |
 | **SoC / CPU** | ✅ Working | MediaTek Helio G25 (8x Cortex-A53 up to 2.0 GHz) |
 | **Display** | ✅ Working | HD+ 720x1600 @ 60Hz, 32bpp framebuffer (`mtkfb`) + X11 |
+| **GPU / 3D Graphics** | ✅ Working | PowerVR Rogue GE8320 (Series 8XE), patched libhybris + DDK 1.13, ~395 FPS raw, 650 MHz DVFS |
 | **Touchscreen** | ✅ Working | Novatek NT36572 / DJN multi-touch capacitive panel |
 | **Backlight Control** | ✅ Working | PWM brightness (`/sys/class/leds/lcd-backlight/brightness`) |
 | **Hardware Keys** | ✅ Working | PMIC Power button + Volume Up/Down with Bonsai debounce |

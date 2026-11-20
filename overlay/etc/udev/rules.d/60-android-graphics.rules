@@ -1,0 +1,8 @@
+KERNEL=="ion", GROUP="video", MODE="0666"
+KERNEL=="pvr_sync", GROUP="video", MODE="0666"
+KERNEL=="mtk_cmdq", GROUP="video", MODE="0666"
+KERNEL=="mtk_disp_mgr", GROUP="video", MODE="0666"
+KERNEL=="mdp_sync", GROUP="video", MODE="0666"
+KERNEL=="card*", SUBSYSTEM=="drm", GROUP="video", MODE="0666"
+KERNEL=="renderD*", SUBSYSTEM=="drm", GROUP="video", MODE="0666"
+KERNEL=="fb*", GROUP="video", MODE="0666"
