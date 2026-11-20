@@ -32,8 +32,8 @@ Boots directly from an external MicroSD card via native Android fastboot. **Inte
 
 ## 📦 Repositories
 
-* **Kernel Source:** [`kernel_xiaomi_blossom_linux`](https://github.com/henry-richard7/kernel_xiaomi_blossom_linux.git) (branch `recommended-picks`)
-* **Userspace & Installer:** [`xiaomi-redmi-9a-linux`](https://github.com/henry-richard7/xiaomi-redmi-9a-linux.git) (this repository)
+* **Kernel Source:** [`kernel_xiaomi_blossom_linux`](https://github.com/xiaomi-redmi-9a-linux/kernel_xiaomi_blossom_linux.git) (branch `main`)
+* **Userspace & Installer:** [`xiaomi-redmi-9a-linux`](https://github.com/xiaomi-redmi-9a-linux/xiaomi-redmi-9a-linux.git) (this repository)
 
 ---
 
@@ -150,7 +150,7 @@ Wi-Fi is powered by the lightweight `nl80211` netlink bridge:
 Connect your MicroSD card to your PC, identify its device node (e.g. `/dev/sdb`), and run the automated installer:
 
 ```bash
-git clone https://github.com/henry-richard7/xiaomi-redmi-9a-linux.git
+git clone https://github.com/xiaomi-redmi-9a-linux/xiaomi-redmi-9a-linux.git
 cd xiaomi-redmi-9a-linux
 
 # Run installer (replace /dev/sdb with your actual SD card device!)
@@ -166,10 +166,10 @@ The script will:
 
 ### Step 2: Get or Build the Kernel
 
-Download the prebuilt `boot-linux.img` from [Releases](https://github.com/henry-richard7/kernel_xiaomi_blossom_linux/releases), or compile it yourself from source:
+Download the prebuilt `boot-linux.img` from [Releases](https://github.com/xiaomi-redmi-9a-linux/kernel_xiaomi_blossom_linux/releases), or compile it yourself from source:
 
 ```bash
-git clone -b recommended-picks https://github.com/henry-richard7/kernel_xiaomi_blossom_linux.git
+git clone https://github.com/xiaomi-redmi-9a-linux/kernel_xiaomi_blossom_linux.git
 cd kernel_xiaomi_blossom_linux
 
 # Compile kernel and package boot-linux.img
