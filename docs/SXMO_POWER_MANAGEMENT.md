@@ -11,12 +11,12 @@ The MediaTek Helio G25 (MT6765) System-on-Chip relies on a proprietary System Po
 1. **The SPM PCM Hardware Watchdog:** ATF arms a 30-second SPM PCM hardware watchdog (`SPM_ARGS_PCM_WDT`) before CPU Wait-For-Interrupt (WFI). If sleep exceeds 30 seconds, the hardware watchdog bites and halts the SoC.
 2. **Proprietary Power State Dependencies:** MT6765 low-power sleep modes assume Android's WakeLock / Power HAL infrastructure. In native Linux, unhandled clock domain and bus transitions cause unrecoverable hardware lockups ("Sleep of Death") upon deep sleep transitions.
 
-### The Solution: Active Runtime Power Profile
+### The Solution: Active Runtime Power Profile on Efficiency Cluster 1
 Rather than putting the SoC into a fatal deep suspend, the Redmi 9A port utilizes **active runtime power management**:
-- **CPU Core Hotplugging:** 7 of the 8 Cortex-A53 cores (the entire 4-core BIG cluster and 3 LITTLE cores) are dynamically powered down (`cpu1` through `cpu7` taken offline) whenever the screen is locked/off.
-- **Clock & Voltage Clamping:** The single remaining core (`cpu0`) is forced to the minimum available clock frequency (**900 MHz**) using the `powersave` governor.
+- **Efficiency Core Standby (`cpu4`):** The MT6765 contains two clusters: Cluster 0 (`cpu0-3`, Performance, 900 MHz – 2.0 GHz) and Cluster 1 (`cpu4-7`, Efficiency, 400 MHz – 1.5 GHz). During screenoff, execution shifts entirely to **`cpu4`**, while the entire high-power Cluster 0 (cores 0–3) and remaining efficiency cores (5–7) are powered down.
+- **Clock & Voltage Clamping (400 MHz):** The single active efficiency core (`cpu4`) is locked to the minimum factory-calibrated clock frequency (**400 MHz**) using the `powersave` governor.
 - **Subsystem Sleep:** The display panel is unblanked/powered down, touchscreen interrupts are suspended, Wi-Fi 802.11 power saving is asserted, and disconnected Bluetooth radios are powered down.
-- **Instant Wakeup:** The moment you press the Power button, all 7 offline cores are instantly brought back online and the governor is restored to `schedutil` in less than 50 milliseconds, providing a fluid 8-core desktop experience with zero lag.
+- **Instant Wakeup:** The moment you press the Power button, all 7 offline cores are instantly brought back online and the governor is restored to `schedutil` across all 8 cores in less than 50 milliseconds, providing a fluid 8-core desktop experience with zero lag.
 
 ---
 
