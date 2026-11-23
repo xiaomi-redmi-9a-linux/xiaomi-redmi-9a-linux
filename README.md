@@ -24,7 +24,7 @@ Boots directly from an external MicroSD card via native Android fastboot. **Inte
 | **Bluetooth** | ✅ Working | Bluetooth 5.0 (MT6631), native Rust bridge (`mtk-bt-bridge`), BlueZ 5.86, scanning/pairing |
 | **Battery & Charging** | ✅ Working | True OCV fuelgauge, monotonic rate limiting, status bar glyph (`󰂉`) & percentage |
 | **USB Networking** | ✅ Working | USB Gadget Ethernet (RNDIS / CDC-NCM / ACM serial console) |
-| **Power Management** | ✅ Working | Sleep-of-death fix (rtcwake autosuspend disabled), 2-min idle locker, `mtk-fb-blank` 0W display powerdown, debounced power key |
+| **Power Management** | ✅ Working | Runtime CPU hotplug (7 cores off on screenoff, 900 MHz clamp, instant 8-core wake), autosuspend/s2idle disabled, display/touchscreen sleep |
 | **Clock & Timezone** | ✅ Working | Asia/Kolkata (IST) with 12-hour AM/PM status bar & lockscreen widget |
 | **Internal Storage** | 🛡️ Protected | Never touched; system runs entirely from MicroSD (`/dev/mmcblk1p1`) |
 

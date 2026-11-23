@@ -9,7 +9,8 @@
 # shellcheck source=scripts/core/sxmo_common.sh
 . sxmo_common.sh
 
-sxmo_led.sh blink red blue &
+# Apply Ultra-Power-Saving runtime profile (offline cores 1-7, powersave governor 900MHz, wifi power save)
+doas /usr/bin/blossom_power_profile.sh screenoff &
 
 [ "$SXMO_WM" = "sway" ] && swaymsg mode default
 sxmo_wm.sh display off
@@ -17,18 +18,13 @@ sxmo_wm.sh inputevent touchscreen off
 
 # Bluetooth Smart Power Saving:
 # If Bluetooth is on, but NO devices are connected (e.g. not listening to music),
-# put the controller in low-power off state to save 66 mA continuously.
+# put the controller in low-power off state to save ~66 mA continuously.
 if bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
 	if [ -z "$(bluetoothctl devices Connected 2>/dev/null)" ]; then
 		touch "${XDG_RUNTIME_DIR:-/tmp}/.sxmo_bt_auto_slept"
 		bluetoothctl power off >/dev/null 2>&1 || true
 		sxmo_log "bluetooth: auto-powered off on screenoff (no connected devices)"
 	fi
-fi
-
-if [ ! -e "$XDG_CACHE_HOME"/sxmo/sxmo.nosuspend ]; then
-	sxmo_jobs.sh start periodic_blink \
-		sxmo_run_periodically.sh -w 2 -- sxmo_led.sh blink red blue
 fi
 
 case "$SXMO_WM" in

@@ -9,7 +9,8 @@
 # shellcheck source=scripts/core/sxmo_common.sh
 . sxmo_common.sh
 
-sxmo_led.sh blink red green &
+# Immediately restore all 8 CPU cores and schedutil governor for snappy performance
+doas /usr/bin/blossom_power_profile.sh unlock &
 
 sxmo_wm.sh display on
 sxmo_wm.sh inputevent touchscreen on
@@ -22,7 +23,6 @@ if [ -f "${XDG_RUNTIME_DIR:-/tmp}/.sxmo_bt_auto_slept" ]; then
 	sxmo_log "bluetooth: restored power on screen unlock"
 fi
 
-sxmo_jobs.sh stop periodic_blink
 sxmo_jobs.sh stop periodic_wakelock_check
 
 # Go to the next idle state after 120 seconds of inactivity
