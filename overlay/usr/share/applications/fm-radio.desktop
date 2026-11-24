@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=FM Radio
+Comment=Android-style FM Radio Player
+Exec=/usr/local/bin/fm_radio_gui
+Icon=radio
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Player;
+Keywords=fm;radio;tuner;broadcast;

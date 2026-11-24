@@ -1,0 +1,19 @@
+[package]
+name = "fm_radio_gui"
+version = "1.0.0"
+edition = "2021"
+authors = ["Antigravity"]
+description = "Fast, lightweight touch-friendly FM Radio GUI for Xiaomi Redmi 9A on Alpine Linux"
+
+[dependencies]
+gtk = { version = "0.18", features = ["v3_24"] }
+glib = "0.18"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

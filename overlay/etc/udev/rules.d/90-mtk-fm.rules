@@ -1,0 +1,1 @@
+KERNEL=="fm", GROUP="audio", MODE="0660"

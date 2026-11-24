@@ -68,7 +68,7 @@ write_line_app firefox-esr "$icon_ffx Firefox ESR" "firefox-esr"
 write_line_app flare "$icon_msg Flare" "flare"
 write_line_app flowtime "$icon_hrg Flowtime" "flowtime"
 write_line_app foliate "$icon_bok Foliate" "foliate"
-write_line_app fm_radio_gui.py "$icon_rad FM Radio" "/usr/local/bin/fm_radio_gui.py"
+write_line_app fm_radio_gui "$icon_rad FM Radio" "/usr/local/bin/fm_radio_gui"
 ( [ -n "$WAYLAND_DISPLAY" ] && command -v foot >/dev/null) && \
 	write_line "$icon_trm Foot" "foot $SHELL"
 write_line_app foxtrotgps "$icon_gps Foxtrotgps" "foxtrotgps"
