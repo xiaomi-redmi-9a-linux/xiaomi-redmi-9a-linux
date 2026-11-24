@@ -162,6 +162,14 @@ The script will:
 2. Download and extract the latest Alpine Linux ARM64 rootfs.
 3. Install the device overlay (Sxmo profile, audio routing, tinydm auto-login, `nmcli` bridge, and input hooks).
 
+#### Alternative: Build Standalone Loop Image (`linux-rootfs.ext4`)
+To build a standalone 5 GiB ext4 disk image (used with loopback boot on `/dev/loop0`):
+```bash
+# Generate linux-rootfs.ext4
+./scripts/build-alpine-rootfs.sh [optional-output-path]
+```
+The script uses `fakeroot mkfs.ext4` to generate the image with the complete repository overlay, OpenRC runlevel links, sanitized Wi-Fi configs, and embedded firmware symlinks.
+
 ---
 
 ### Step 2: Get or Build the Kernel
