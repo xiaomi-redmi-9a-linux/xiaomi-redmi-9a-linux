@@ -3,13 +3,19 @@ mod launcher;
 mod loader;
 mod patch;
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::Arc;
 
 static RUNNING: AtomicBool = AtomicBool::new(true);
+static SIGNAL_PIPE_WR: AtomicI32 = AtomicI32::new(-1);
 
 extern "C" fn sig_handler(_sig: libc::c_int) {
-    RUNNING.store(false, Ordering::Relaxed);
+    RUNNING.store(false, Ordering::SeqCst);
+    let wr = SIGNAL_PIPE_WR.load(Ordering::Relaxed);
+    if wr >= 0 {
+        let byte: u8 = 1;
+        unsafe { libc::write(wr, &byte as *const u8 as *const libc::c_void, 1) };
+    }
 }
 
 fn install_signals() {
@@ -21,18 +27,17 @@ fn install_signals() {
 
 fn main() {
     println!("[mtk-wmt-loader] Starting MediaTek WMT native loader daemon...");
+    let mut sig_fds = [-1i32; 2];
+    if unsafe { libc::pipe(sig_fds.as_mut_ptr()) } == 0 {
+        unsafe {
+            libc::fcntl(sig_fds[0], libc::F_SETFL, libc::O_NONBLOCK);
+            libc::fcntl(sig_fds[1], libc::F_SETFL, libc::O_NONBLOCK);
+        }
+        SIGNAL_PIPE_WR.store(sig_fds[1], Ordering::SeqCst);
+    }
     install_signals();
 
     let running = Arc::new(AtomicBool::new(true));
-    let r_clone = Arc::clone(&running);
-
-    // Thread monitoring our static RUNNING flag to propagate to Arc
-    std::thread::spawn(move || {
-        while RUNNING.load(Ordering::Relaxed) {
-            std::thread::sleep(std::time::Duration::from_millis(200));
-        }
-        r_clone.store(false, Ordering::Relaxed);
-    });
 
     // Step 1: Loader (/dev/wmtdetect)
     match loader::do_loader() {
@@ -46,7 +51,14 @@ fn main() {
     }
 
     // Step 2: Launcher (/dev/stpwmt)
-    match launcher::do_launcher(running) {
+    let res = launcher::do_launcher(running, &RUNNING, sig_fds[0]);
+    if sig_fds[0] >= 0 {
+        unsafe {
+            libc::close(sig_fds[0]);
+            libc::close(sig_fds[1]);
+        }
+    }
+    match res {
         Ok(_) => {
             println!("[mtk-wmt-loader] Daemon stopped cleanly.");
         }

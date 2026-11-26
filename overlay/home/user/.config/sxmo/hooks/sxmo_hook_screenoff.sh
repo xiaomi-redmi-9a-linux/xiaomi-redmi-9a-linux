@@ -16,6 +16,10 @@ doas /usr/bin/blossom_power_profile.sh screenoff &
 sxmo_wm.sh display off
 sxmo_wm.sh inputevent touchscreen off
 
+# Pause background X11 pollers (autocutsel, conky) while screen is off
+pkill -STOP autocutsel 2>/dev/null || true
+pkill -STOP conky 2>/dev/null || true
+
 # Bluetooth Smart Power Saving:
 # If Bluetooth is on, but NO devices are connected (e.g. not listening to music),
 # put the controller in low-power off state to save ~66 mA continuously.

@@ -57,10 +57,9 @@ The bridge returns formatted output:
 
 ### 3. Background Daemon Event Loop (`nmcli monitor`)
 Sxmo launches `sxmo_networkmonitor` under `superd` to watch network state changes.
-The bridge implements an event loop:
-* Samples `iw dev wlan0 link` every 3 seconds.
+The bridge implements an event-driven monitor:
+* Emits initial state, then listens on `iw event` (Linux `nl80211` netlink socket) with **0% idle CPU** rather than polling `iw dev wlan0 link` on a timer (falling back to `sleep 5` / `sleep 15` only if `iw event` exits or `iw` is unavailable).
 * Emits state change messages (`wlan0: connected`, `wlan0: disconnected`) when the link status transitions.
-* Keeps `sxmo_networkmonitor` running reliably with minimal CPU usage.
 
 ---
 

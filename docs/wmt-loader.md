@@ -79,9 +79,9 @@ Located at [`src/mtk-wmt-loader/`](../src/mtk-wmt-loader/):
 - `Makefile`: Cross-compiles for `aarch64-unknown-linux-musl` with `ld.lld`.
 - `src/ioctl.rs`: Linux ioctl definitions matching kernel `_IOW`/`_IOR` constants and 264-byte `WmtPatchInfo` C struct.
 - `src/loader.rs`: Implements Stage 1 (`/dev/wmtdetect` handshake and chip identification).
-- `src/launcher.rs`: Implements Stage 2 (`/dev/stpwmt` configuration, workers, and event loop).
+- `src/launcher.rs`: Implements Stage 2 (`/dev/stpwmt` configuration, workers, and blocking `poll(..., -1)` event loop with signal self-pipe).
 - `src/patch.rs`: Firmwares discovery (`glob`), patch validation, header unpacking, and Bluetooth build ID parsing.
-- `src/main.rs`: Daemon entry point with clean POSIX signal (`SIGINT`/`SIGTERM`) handling.
+- `src/main.rs`: Daemon entry point with self-pipe POSIX signal (`SIGINT`/`SIGTERM`) handling and zero idle polling wakeups.
 
 ---
 

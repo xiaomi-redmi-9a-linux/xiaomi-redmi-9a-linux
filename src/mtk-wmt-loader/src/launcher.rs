@@ -123,7 +123,11 @@ fn handle_srh_patch(fd: libc::c_int) -> Result<(), String> {
     Ok(())
 }
 
-pub fn do_launcher(running: Arc<AtomicBool>) -> Result<(), String> {
+pub fn do_launcher(
+    running: Arc<AtomicBool>,
+    global_running: &AtomicBool,
+    sig_rd_fd: libc::c_int,
+) -> Result<(), String> {
     println!("[launcher] Opening {}", WMT_DEV);
     let file = OpenOptions::new()
         .read(true)
@@ -138,7 +142,7 @@ pub fn do_launcher(running: Arc<AtomicBool>) -> Result<(), String> {
         if chipid != -1 {
             break;
         }
-        if !running.load(Ordering::Relaxed) {
+        if !running.load(Ordering::Relaxed) || !global_running.load(Ordering::Relaxed) {
             return Ok(());
         }
         eprintln!("[launcher] WMT_IOCTL_WMT_QUERY_CHIPID failed, retrying in 300ms...");
@@ -175,16 +179,25 @@ pub fn do_launcher(running: Arc<AtomicBool>) -> Result<(), String> {
 
     println!("[launcher] Waiting for patch requests on {}...", WMT_DEV);
 
-    let mut pfd = libc::pollfd {
-        fd,
-        events: libc::POLLIN,
-        revents: 0,
-    };
+    let mut pfds = [
+        libc::pollfd {
+            fd,
+            events: libc::POLLIN,
+            revents: 0,
+        },
+        libc::pollfd {
+            fd: sig_rd_fd,
+            events: libc::POLLIN,
+            revents: 0,
+        },
+    ];
+    let nfds = if sig_rd_fd >= 0 { 2 } else { 1 };
+    let timeout_ms = if sig_rd_fd >= 0 { -1 } else { 1000 };
 
     let mut buf = [0u8; 256];
 
-    while running.load(Ordering::Relaxed) {
-        let ret = unsafe { libc::poll(&mut pfd, 1, 1000) };
+    while running.load(Ordering::Relaxed) && global_running.load(Ordering::Relaxed) {
+        let ret = unsafe { libc::poll(pfds.as_mut_ptr(), nfds, timeout_ms) };
         if ret < 0 {
             let err = std::io::Error::last_os_error();
             if err.raw_os_error() == Some(libc::EINTR) {
@@ -193,12 +206,15 @@ pub fn do_launcher(running: Arc<AtomicBool>) -> Result<(), String> {
             eprintln!("[launcher] poll error: {}", err);
             break;
         }
+        if nfds == 2 && (pfds[1].revents & libc::POLLIN) != 0 {
+            running.store(false, Ordering::SeqCst);
+            break;
+        }
         if ret == 0 {
-            // Timeout (1s) - allow checking running flag
             continue;
         }
 
-        if (pfd.revents & libc::POLLIN) != 0 {
+        if (pfds[0].revents & libc::POLLIN) != 0 {
             let n = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len()) };
             if n <= 0 {
                 eprintln!("[launcher] read returned {}", n);

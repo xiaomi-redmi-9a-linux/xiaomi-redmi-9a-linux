@@ -61,8 +61,8 @@ The daemon is located in `src/mtk-sensor-proxy/`:
 - **Language:** Rust (edition 2021)
 - **D-Bus Library:** `zbus` 4.x
 - **Target:** `aarch64-unknown-linux-musl` (pure static binary, zero dynamic dependencies)
-- **Binary Footprint:** ~1.2 MB on disk, **~1.4 MB VmRSS in memory**
-- **Read Latency:** ~0.43 ms per hardware poll; polling at 4 Hz uses **<0.1% CPU**.
+- **Binary Footprint:** ~1.3 MB on disk (`overlay/usr/local/bin/mtk-sensor-proxy`), **~1.4 MB VmRSS in memory**
+- **On-Demand Activation (Power Saving):** Because `GSENSOR_IOCTL_INIT(1)` causes the kernel `accelhub` driver to configure the SCP sensor hub at a 5 ms (200 Hz) sample period (`SCP A IPC2HOST` / `chre_kthread`), `mtk-sensor-proxy` probes `/dev/gsensor` and `/dev/als_ps` in standby mode (`0`) at startup and blocks on a `Condvar` with **0 wakeups/sec** while unclaimed. Each sensor is enabled only on `0 → 1` `Claim*()` transitions, polled at 4 Hz only while claimed, and disabled (`0`) on `1 → 0` `Release*()` or `SIGINT`/`SIGTERM`.
 
 ### Implemented D-Bus Interface (`net.hadess.SensorProxy`)
 - **Methods:**

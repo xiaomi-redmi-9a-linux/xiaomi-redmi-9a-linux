@@ -15,6 +15,10 @@ doas /usr/bin/blossom_power_profile.sh unlock &
 sxmo_wm.sh display on
 sxmo_wm.sh inputevent touchscreen on
 
+# Resume X11 background widgets/clipboard sync paused on screenoff
+pkill -CONT autocutsel 2>/dev/null || true
+pkill -CONT conky 2>/dev/null || true
+
 # Restore Bluetooth power if it was auto-slept by screenoff
 if [ -f "${XDG_RUNTIME_DIR:-/tmp}/.sxmo_bt_auto_slept" ]; then
 	rm -f "${XDG_RUNTIME_DIR:-/tmp}/.sxmo_bt_auto_slept"

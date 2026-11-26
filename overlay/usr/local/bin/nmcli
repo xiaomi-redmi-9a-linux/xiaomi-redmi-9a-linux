@@ -65,7 +65,7 @@ case "$args" in
         ;;
     *"device monitor"*|*"d monitor"*)
         last_state=""
-        while true; do
+        emit_state() {
             get_wifi_info
             if [ "$WIFI_CONNECTED" = "1" ]; then
                 new_state="connected"
@@ -76,8 +76,26 @@ case "$args" in
                 last_state="$new_state"
                 echo "wlan0: $new_state"
             fi
-            sleep 3
-        done
+        }
+        emit_state
+        if command -v iw >/dev/null 2>&1; then
+            while true; do
+                iw event 2>/dev/null | while IFS= read -r line; do
+                    case "$line" in
+                        *"connect"*|*"disconnect"*|*"assoc"*|*"deauth"*|*"del interface"*|*"new interface"*)
+                            emit_state
+                            ;;
+                    esac
+                done
+                sleep 5
+                emit_state
+            done
+        else
+            while true; do
+                sleep 15
+                emit_state
+            done
+        fi
         ;;
     *)
         get_wifi_info

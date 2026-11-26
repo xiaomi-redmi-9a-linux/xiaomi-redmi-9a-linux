@@ -60,7 +60,9 @@ esac
   - Invokes `doas /usr/bin/blossom_power_profile.sh screenoff`
   - Turns display off (`sxmo_wm.sh display off`) and blanks `/dev/fb0`
   - Disables touchscreen input events (`sxmo_wm.sh inputevent touchscreen off`)
-  - **No Unnecessary Timer Loops:** Removed the default upstream 2-second periodic notification LED breathing loop (Redmi 9A hardware has no notification LEDs), keeping the CPU in pure low-power WFI idle.
+  - **Pause X11 Idle Pollers:** Sends `SIGSTOP` (`pkill -STOP`) to `autocutsel` and `conky` so X11 clipboard polling and desktop clock redraws do not wake `cpu4` while the display is off.
+  - **On-Demand Daemons:** `mtk-sensor-proxy` keeps SCP hardware sensors disabled (`0 Hz` `SCP A IPC2HOST`) when unclaimed, `nmcli device monitor` blocks on `iw event`, and `mtk-bt-bridge` / `mtk-wmt-loader` block via `poll(..., -1)` with a signal self-pipe—bringing quiet screen-off discharge current down to **~69.4 mA** (from ~105–115 mA).
+  - **No Unnecessary Timer Loops:** Removed the default upstream 2-second periodic notification LED breathing loop (Redmi 9A hardware has no notification LEDs), keeping the CPU in pure low-power WFI/MCDI idle.
   - **Bluetooth Smart Idle:** If Bluetooth is enabled but no devices are connected, the controller is powered down, saving **~66 mA continuous current**.
 
 ### C. Unlock Hook (`sxmo_hook_unlock.sh`)
@@ -69,6 +71,7 @@ esac
   - Invokes `doas /usr/bin/blossom_power_profile.sh unlock` to instantly restore 8 cores and `schedutil`
   - Powers display on (`sxmo_wm.sh display on`)
   - Enables touchscreen input events
+  - Resumes `autocutsel` and `conky` via `SIGCONT` (`pkill -CONT`)
   - Restores Bluetooth power if it was auto-slept by the screenoff hook
 
 ### D. Safe Suspend No-Op: `/usr/bin/sxmo_suspend.sh`

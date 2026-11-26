@@ -7,13 +7,19 @@
 //! quirk handling for MT6631 controller limitations.
 
 use std::ffi::CString;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
 static RUNNING: AtomicBool = AtomicBool::new(true);
+static SIGNAL_PIPE_WR: AtomicI32 = AtomicI32::new(-1);
 
 extern "C" fn handle_signal(_sig: libc::c_int) {
     RUNNING.store(false, Ordering::SeqCst);
+    let wr = SIGNAL_PIPE_WR.load(Ordering::Relaxed);
+    if wr >= 0 {
+        let byte: u8 = 1;
+        unsafe { libc::write(wr, &byte as *const u8 as *const libc::c_void, 1) };
+    }
 }
 
 fn write_all(fd: libc::c_int, data: &[u8]) -> Result<(), String> {
@@ -65,6 +71,15 @@ fn open_nonblock(path: &str, flags: libc::c_int) -> Result<libc::c_int, String> 
 
 fn main() {
     println!("[mtk-bt-bridge] Starting MediaTek MT6631 Bluetooth VHCI bridge...");
+
+    let mut sig_fds = [-1i32; 2];
+    if unsafe { libc::pipe(sig_fds.as_mut_ptr()) } == 0 {
+        unsafe {
+            libc::fcntl(sig_fds[0], libc::F_SETFL, libc::O_NONBLOCK);
+            libc::fcntl(sig_fds[1], libc::F_SETFL, libc::O_NONBLOCK);
+        }
+        SIGNAL_PIPE_WR.store(sig_fds[1], Ordering::SeqCst);
+    }
 
     // Register signal handlers for clean shutdown
     unsafe {
@@ -154,15 +169,25 @@ fn main() {
                 events: libc::POLLIN,
                 revents: 0,
             },
+            libc::pollfd {
+                fd: sig_fds[0],
+                events: libc::POLLIN,
+                revents: 0,
+            },
         ];
 
-        let ret = unsafe { libc::poll(poll_fds.as_mut_ptr(), 2, 250) };
+        let nfds = if sig_fds[0] >= 0 { 3 } else { 2 };
+        let timeout_ms = if sig_fds[0] >= 0 { -1 } else { 1000 };
+        let ret = unsafe { libc::poll(poll_fds.as_mut_ptr(), nfds, timeout_ms) };
         if ret < 0 {
             let err = std::io::Error::last_os_error();
             if err.raw_os_error() == Some(libc::EINTR) {
                 continue;
             }
             eprintln!("[mtk-bt-bridge] poll error: {}", err);
+            break;
+        }
+        if nfds == 3 && (poll_fds[2].revents & libc::POLLIN != 0) {
             break;
         }
 
@@ -245,6 +270,12 @@ fn main() {
     unsafe {
         libc::close(stpbt_fd); // Triggers BT_close() to power off MT6631 radio
         libc::close(vhci_fd);  // Unregisters hci0 from kernel
+        if sig_fds[0] >= 0 {
+            libc::close(sig_fds[0]);
+        }
+        if sig_fds[1] >= 0 {
+            libc::close(sig_fds[1]);
+        }
     }
     println!("[mtk-bt-bridge] Bridge stopped cleanly.");
 }

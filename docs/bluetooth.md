@@ -80,9 +80,9 @@ MT6631 firmware rejects this command with `Unknown HCI Command` (`0x01`), which 
 
 * **Location:** `/usr/local/bin/mtk-bt-bridge`
 * **Binary Format:** 64-bit ELF static ARM64 musl (`aarch64-unknown-linux-musl`), stripped
-* **Binary Size:** **341 KB**
+* **Binary Size:** **334 KB**
 * **RAM Consumption:** **284 kB resident memory (VmRSS)**, 520 kB virtual size
-* **CPU Consumption:** **0.0%** (event-driven `libc::poll` loop)
+* **CPU Consumption:** **0.0%** (blocking `libc::poll(..., -1)` loop with signal self-pipe; zero periodic timer wakeups)
 * **OpenRC Service:** `/etc/init.d/mtk-bt-bridge` (runlevel `default`)
   * `need mtk-wmt-loader`
   * `before bluetooth`

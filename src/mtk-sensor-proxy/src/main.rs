@@ -1,6 +1,8 @@
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::{AsRawFd, RawFd};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
 use zbus::blocking::connection::Builder;
@@ -15,6 +17,31 @@ const ALSPS_SET_ALS_MODE: i32 = 0x40048405u32 as i32;
 const ALSPS_GET_ALS_RAW_DATA: i32 = 0x80048408u32 as i32;
 const ALSPS_GET_PS_TEST_RESULT: i32 = 0x80048409u32 as i32;
 
+static SHUTDOWN: AtomicBool = AtomicBool::new(false);
+
+extern "C" fn handle_signal(_sig: libc::c_int) {
+    SHUTDOWN.store(true, Ordering::SeqCst);
+}
+
+#[derive(Default)]
+struct ClaimState {
+    accel_claims: u32,
+    light_claims: u32,
+    proximity_claims: u32,
+    stop: bool,
+}
+
+impl ClaimState {
+    fn any_claimed(&self) -> bool {
+        self.accel_claims > 0 || self.light_claims > 0 || self.proximity_claims > 0
+    }
+}
+
+fn set_sensor_mode(fd: RawFd, ioctl_code: i32, enable: bool) -> bool {
+    let mut val: i32 = if enable { 1 } else { 0 };
+    unsafe { libc::ioctl(fd, ioctl_code, &mut val) >= 0 }
+}
+
 struct SensorProxy {
     has_accel: bool,
     orientation: String,
@@ -26,41 +53,98 @@ struct SensorProxy {
     has_ps: bool,
     proximity_near: bool,
 
-    accel_claims: u32,
-    light_claims: u32,
-    proximity_claims: u32,
+    gsensor_fd: Option<RawFd>,
+    alsps_fd: Option<RawFd>,
+    claims: Arc<(Mutex<ClaimState>, Condvar)>,
 }
 
 #[interface(name = "net.hadess.SensorProxy")]
 impl SensorProxy {
     fn claim_accelerometer(&mut self) {
-        self.accel_claims = self.accel_claims.saturating_add(1);
-        println!("[mtk-sensor-proxy] ClaimAccelerometer (total: {})", self.accel_claims);
+        let (lock, cvar) = &*self.claims;
+        let mut st = lock.lock().unwrap();
+        let prev = st.accel_claims;
+        st.accel_claims = st.accel_claims.saturating_add(1);
+        if prev == 0 && self.has_accel {
+            if let Some(fd) = self.gsensor_fd {
+                if !set_sensor_mode(fd, GSENSOR_IOCTL_INIT, true) {
+                    eprintln!("[mtk-sensor-proxy] Failed to enable /dev/gsensor");
+                }
+            }
+        }
+        println!("[mtk-sensor-proxy] ClaimAccelerometer (total: {})", st.accel_claims);
+        cvar.notify_all();
     }
 
     fn release_accelerometer(&mut self) {
-        self.accel_claims = self.accel_claims.saturating_sub(1);
-        println!("[mtk-sensor-proxy] ReleaseAccelerometer (total: {})", self.accel_claims);
+        let (lock, cvar) = &*self.claims;
+        let mut st = lock.lock().unwrap();
+        st.accel_claims = st.accel_claims.saturating_sub(1);
+        if st.accel_claims == 0 && self.has_accel {
+            if let Some(fd) = self.gsensor_fd {
+                let _ = set_sensor_mode(fd, GSENSOR_IOCTL_INIT, false);
+            }
+        }
+        println!("[mtk-sensor-proxy] ReleaseAccelerometer (total: {})", st.accel_claims);
+        cvar.notify_all();
     }
 
     fn claim_light(&mut self) {
-        self.light_claims = self.light_claims.saturating_add(1);
-        println!("[mtk-sensor-proxy] ClaimLight (total: {})", self.light_claims);
+        let (lock, cvar) = &*self.claims;
+        let mut st = lock.lock().unwrap();
+        let prev = st.light_claims;
+        st.light_claims = st.light_claims.saturating_add(1);
+        if prev == 0 && self.has_als {
+            if let Some(fd) = self.alsps_fd {
+                if !set_sensor_mode(fd, ALSPS_SET_ALS_MODE, true) {
+                    eprintln!("[mtk-sensor-proxy] Failed to enable ALS");
+                }
+            }
+        }
+        println!("[mtk-sensor-proxy] ClaimLight (total: {})", st.light_claims);
+        cvar.notify_all();
     }
 
     fn release_light(&mut self) {
-        self.light_claims = self.light_claims.saturating_sub(1);
-        println!("[mtk-sensor-proxy] ReleaseLight (total: {})", self.light_claims);
+        let (lock, cvar) = &*self.claims;
+        let mut st = lock.lock().unwrap();
+        st.light_claims = st.light_claims.saturating_sub(1);
+        if st.light_claims == 0 && self.has_als {
+            if let Some(fd) = self.alsps_fd {
+                let _ = set_sensor_mode(fd, ALSPS_SET_ALS_MODE, false);
+            }
+        }
+        println!("[mtk-sensor-proxy] ReleaseLight (total: {})", st.light_claims);
+        cvar.notify_all();
     }
 
     fn claim_proximity(&mut self) {
-        self.proximity_claims = self.proximity_claims.saturating_add(1);
-        println!("[mtk-sensor-proxy] ClaimProximity (total: {})", self.proximity_claims);
+        let (lock, cvar) = &*self.claims;
+        let mut st = lock.lock().unwrap();
+        let prev = st.proximity_claims;
+        st.proximity_claims = st.proximity_claims.saturating_add(1);
+        if prev == 0 && self.has_ps {
+            if let Some(fd) = self.alsps_fd {
+                if !set_sensor_mode(fd, ALSPS_SET_PS_MODE, true) {
+                    eprintln!("[mtk-sensor-proxy] Failed to enable PS");
+                }
+            }
+        }
+        println!("[mtk-sensor-proxy] ClaimProximity (total: {})", st.proximity_claims);
+        cvar.notify_all();
     }
 
     fn release_proximity(&mut self) {
-        self.proximity_claims = self.proximity_claims.saturating_sub(1);
-        println!("[mtk-sensor-proxy] ReleaseProximity (total: {})", self.proximity_claims);
+        let (lock, cvar) = &*self.claims;
+        let mut st = lock.lock().unwrap();
+        st.proximity_claims = st.proximity_claims.saturating_sub(1);
+        if st.proximity_claims == 0 && self.has_ps {
+            if let Some(fd) = self.alsps_fd {
+                let _ = set_sensor_mode(fd, ALSPS_SET_PS_MODE, false);
+            }
+        }
+        println!("[mtk-sensor-proxy] ReleaseProximity (total: {})", st.proximity_claims);
+        cvar.notify_all();
     }
 
     #[zbus(property)]
@@ -131,55 +215,78 @@ fn calculate_orientation(x: i32, y: i32, z: i32, current_orientation: &str, curr
     }
 }
 
+fn disable_all_sensors(gsensor: Option<&File>, alsps: Option<&File>, has_accel: bool, has_als: bool, has_ps: bool) {
+    if has_accel {
+        if let Some(f) = gsensor {
+            let _ = set_sensor_mode(f.as_raw_fd(), GSENSOR_IOCTL_INIT, false);
+        }
+    }
+    if let Some(f) = alsps {
+        let fd = f.as_raw_fd();
+        if has_als {
+            let _ = set_sensor_mode(fd, ALSPS_SET_ALS_MODE, false);
+        }
+        if has_ps {
+            let _ = set_sensor_mode(fd, ALSPS_SET_PS_MODE, false);
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[mtk-sensor-proxy] Starting native MediaTek Sensor Proxy (Rust)...");
 
-    // 1. Initialize Accelerometer (/dev/gsensor)
+    unsafe {
+        libc::signal(libc::SIGINT, handle_signal as *const () as usize);
+        libc::signal(libc::SIGTERM, handle_signal as *const () as usize);
+    }
+
+    // 1. Probe Accelerometer (/dev/gsensor) while keeping hardware disabled until claimed
     let gsensor_file = OpenOptions::new()
         .read(true)
         .write(true)
         .custom_flags(libc::O_NONBLOCK)
-        .open("/dev/gsensor");
+        .open("/dev/gsensor")
+        .ok();
 
     let has_accel = match &gsensor_file {
-        Ok(file) => {
-            let mut init_val: i32 = 1;
-            let ret = unsafe { libc::ioctl(file.as_raw_fd(), GSENSOR_IOCTL_INIT, &mut init_val) };
-            if ret >= 0 {
-                println!("[mtk-sensor-proxy] /dev/gsensor initialized successfully");
+        Some(file) => {
+            if set_sensor_mode(file.as_raw_fd(), GSENSOR_IOCTL_INIT, false) {
+                println!("[mtk-sensor-proxy] /dev/gsensor probed (standby until claimed)");
                 true
             } else {
-                eprintln!("[mtk-sensor-proxy] GSENSOR_IOCTL_INIT failed: {}", ret);
+                eprintln!("[mtk-sensor-proxy] /dev/gsensor probe failed");
                 false
             }
         }
-        Err(e) => {
-            eprintln!("[mtk-sensor-proxy] Could not open /dev/gsensor: {}", e);
+        None => {
+            eprintln!("[mtk-sensor-proxy] Could not open /dev/gsensor");
             false
         }
     };
 
-    // 2. Initialize Ambient Light & Proximity (/dev/als_ps)
+    // 2. Probe Ambient Light & Proximity (/dev/als_ps) while keeping hardware disabled until claimed
     let alsps_file = OpenOptions::new()
         .read(true)
         .write(true)
         .custom_flags(libc::O_NONBLOCK)
-        .open("/dev/als_ps");
+        .open("/dev/als_ps")
+        .ok();
 
     let (has_als, has_ps) = match &alsps_file {
-        Ok(file) => {
+        Some(file) => {
             let fd = file.as_raw_fd();
-            let mut val: i32 = 1;
-            let ret_ps = unsafe { libc::ioctl(fd, ALSPS_SET_PS_MODE, &mut val) };
-            let ret_als = unsafe { libc::ioctl(fd, ALSPS_SET_ALS_MODE, &mut val) };
-            println!("[mtk-sensor-proxy] /dev/als_ps initialized (PS: {}, ALS: {})", ret_ps, ret_als);
-            (ret_als >= 0, ret_ps >= 0)
+            let ok_ps = set_sensor_mode(fd, ALSPS_SET_PS_MODE, false);
+            let ok_als = set_sensor_mode(fd, ALSPS_SET_ALS_MODE, false);
+            println!("[mtk-sensor-proxy] /dev/als_ps probed (PS: {}, ALS: {}, standby until claimed)", ok_ps, ok_als);
+            (ok_als, ok_ps)
         }
-        Err(e) => {
-            eprintln!("[mtk-sensor-proxy] Could not open /dev/als_ps: {}", e);
+        None => {
+            eprintln!("[mtk-sensor-proxy] Could not open /dev/als_ps");
             (false, false)
         }
     };
+
+    let claims = Arc::new((Mutex::new(ClaimState::default()), Condvar::new()));
 
     let proxy = SensorProxy {
         has_accel,
@@ -189,9 +296,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         light: 0.0,
         has_ps,
         proximity_near: false,
-        accel_claims: 0,
-        light_claims: 0,
-        proximity_claims: 0,
+        gsensor_fd: gsensor_file.as_ref().map(|f| f.as_raw_fd()),
+        alsps_fd: alsps_file.as_ref().map(|f| f.as_raw_fd()),
+        claims: Arc::clone(&claims),
     };
 
     // 3. Connect to D-Bus System Bus
@@ -204,10 +311,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let iface_ref = conn.object_server().interface::<_, SensorProxy>("/net/hadess/SensorProxy")?;
 
-    // 4. Polling Loop
+    // Signal watcher thread to wake Condvar on SIGINT/SIGTERM
+    let claims_sig = Arc::clone(&claims);
+    thread::spawn(move || {
+        while !SHUTDOWN.load(Ordering::Relaxed) {
+            thread::sleep(Duration::from_millis(500));
+        }
+        let (lock, cvar) = &*claims_sig;
+        let mut st = lock.lock().unwrap();
+        st.stop = true;
+        cvar.notify_all();
+    });
+
+    // 4. On-Demand Polling Loop (sleeps indefinitely with zero wakeups when unclaimed)
     let mut gsensor_buf = [0u8; 64];
 
     loop {
+        let (accel_active, light_active, ps_active) = {
+            let (lock, cvar) = &*claims;
+            let mut st = lock.lock().unwrap();
+            while !st.stop && !st.any_claimed() {
+                st = cvar.wait(st).unwrap();
+            }
+            if st.stop {
+                break;
+            }
+            (st.accel_claims > 0, st.light_claims > 0, st.proximity_claims > 0)
+        };
+
         thread::sleep(Duration::from_millis(250));
 
         let mut orientation_update: Option<String> = None;
@@ -215,9 +346,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut light_update: Option<f64> = None;
         let mut proximity_update: Option<bool> = None;
 
-        // Poll Accelerometer
-        if has_accel {
-            if let Ok(file) = &gsensor_file {
+        if has_accel && accel_active {
+            if let Some(file) = &gsensor_file {
                 let ret = unsafe {
                     libc::ioctl(file.as_raw_fd(), GSENSOR_IOCTL_READ_SENSORDATA, gsensor_buf.as_mut_ptr())
                 };
@@ -243,11 +373,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Poll Light & Proximity
-        if let Ok(file) = &alsps_file {
+        if let Some(file) = &alsps_file {
             let fd = file.as_raw_fd();
 
-            if has_als {
+            if has_als && light_active {
                 let mut lux_raw: i32 = 0;
                 let ret = unsafe { libc::ioctl(fd, ALSPS_GET_ALS_RAW_DATA, &mut lux_raw) };
                 if ret >= 0 {
@@ -259,7 +388,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            if has_ps {
+            if has_ps && ps_active {
                 let mut ps_res: i32 = 0;
                 let ret = unsafe { libc::ioctl(fd, ALSPS_GET_PS_TEST_RESULT, &mut ps_res) };
                 if ret >= 0 {
@@ -272,7 +401,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Apply updates and emit signals
         if orientation_update.is_some() || tilt_update.is_some() || light_update.is_some() || proximity_update.is_some() {
             let mut iface = iface_ref.get_mut();
 
@@ -300,4 +428,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+
+    disable_all_sensors(gsensor_file.as_ref(), alsps_file.as_ref(), has_accel, has_als, has_ps);
+    println!("[mtk-sensor-proxy] Sensors disabled; exiting cleanly.");
+    Ok(())
 }
